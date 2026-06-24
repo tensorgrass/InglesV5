@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InglesV5 - Generador de Audios</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎧 InglesV5</h1>
+            <p class="subtitle">Generador de audios Español → Inglés con pausa inteligente</p>
+        </header>
+
+        <nav class="menu">
+            <a href="/generar" class="menu-card">
+                <div class="menu-icon">▶️</div>
+                <h2>Generar Audios</h2>
+                <p>Sube un archivo CSV con frases en español/inglés y genera audios con pausa optimizada.</p>
+            </a>
+
+            <a href="/reproducir" class="menu-card">
+                <div class="menu-icon">🎵</div>
+                <h2>Reproducir Audios</h2>
+                <p>Selecciona un directorio con archivos MP3, ordénalos por nombre y reprodúcelos en secuencia con controles de pausa/reanudar y parar.</p>
+            </a>
+
+            <div class="menu-card info-card">
+                <div class="menu-icon">📖</div>
+                <h2>¿Cómo funciona?</h2>
+                <ol>
+                    <li>Prepara un CSV con dos columnas: <code>español, inglés</code></li>
+                    <li>Sube el archivo CSV desde el formulario</li>
+                    <li>Indica la carpeta donde quieres guardar los audios</li>
+                    <li>¡Los audios se generan automáticamente con pausas inteligentes!</li>
+                </ol>
+            </div>
+        </nav>
+
+        <footer>
+            <p>Powered by edge-tts · pydub · Flask</p>
+        </footer>
+    </div>
+</body>
+</html>

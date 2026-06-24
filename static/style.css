@@ -1,0 +1,448 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: white;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.back-link {
+    display: inline-block;
+    color: white;
+    text-decoration: none;
+    font-size: 1rem;
+    margin-top: 0.5rem;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.back-link:hover {
+    opacity: 1;
+}
+
+/* ── Menú principal ── */
+.menu {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.menu-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-decoration: none;
+    color: #333;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    display: block;
+}
+
+.menu-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.menu-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.menu-card h2 {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+    color: #667eea;
+}
+
+.menu-card p {
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.menu-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: #667eea;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.info-card {
+    cursor: default;
+}
+
+.info-card ol {
+    margin-left: 1.2rem;
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.info-card ol li {
+    margin-bottom: 0.3rem;
+}
+
+.info-card code {
+    background: #f0f0f0;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+/* ── Tarjetas genéricas ── */
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+}
+
+.card h2 {
+    margin-bottom: 1rem;
+    color: #667eea;
+}
+
+/* ── Formulario ── */
+.form-group {
+    margin-bottom: 1.2rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: #444;
+}
+
+.form-group input[type="file"],
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 0.7rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.form-hint code {
+    background: #f0f0f0;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+}
+
+/* ── Botones ── */
+.btn-primary {
+    display: inline-block;
+    width: 100%;
+    padding: 0.8rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.6rem 1.2rem;
+    background: #f0f0f0;
+    color: #333;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+/* ── Barra de progreso ── */
+.progress-bar-container {
+    width: 100%;
+    height: 20px;
+    background: #e0e0e0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+#progressText {
+    text-align: center;
+    color: #666;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+/* ── Log / Resultados ── */
+.log-container {
+    max-height: 200px;
+    overflow-y: auto;
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+    font-family: monospace;
+}
+
+.result-summary {
+    margin-bottom: 1rem;
+}
+
+.result-summary p {
+    margin-bottom: 0.3rem;
+}
+
+.result-summary code {
+    background: #f0f0f0;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.file-list {
+    max-height: 300px;
+    overflow-y: auto;
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.file-item {
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9rem;
+}
+
+.file-item:last-child {
+    border-bottom: none;
+}
+
+.file-item small {
+    color: #888;
+}
+
+.error-list {
+    max-height: 200px;
+    overflow-y: auto;
+    background: #fff5f5;
+    border-radius: 8px;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.error-item {
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid #fdd;
+    font-size: 0.9rem;
+    color: #c00;
+}
+
+.error-item:last-child {
+    border-bottom: none;
+}
+
+.result-error {
+    color: #c00;
+    font-weight: 600;
+    padding: 1rem;
+    background: #fff5f5;
+    border-radius: 8px;
+}
+
+/* ── Reproductor de audios ── */
+.player-controls {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.btn-play {
+    padding: 0.7rem 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+.btn-play:hover {
+    opacity: 0.9;
+}
+
+.btn-play:active {
+    transform: scale(0.98);
+}
+
+.btn-play:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.transport-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.btn-transport {
+    width: 50px;
+    height: 50px;
+    border: none;
+    border-radius: 50%;
+    background: #f0f0f0;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-transport:hover {
+    background: #e0e0e0;
+}
+
+.btn-transport:active {
+    transform: scale(0.92);
+}
+
+.btn-large {
+    width: 60px;
+    height: 60px;
+    font-size: 1.6rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-large:hover {
+    opacity: 0.9;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.time-display {
+    text-align: center;
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+    font-family: monospace;
+}
+
+.playlist-info {
+    text-align: center;
+    font-size: 0.9rem;
+    color: #888;
+    margin-top: 0.5rem;
+}
+
+.loading-text {
+    text-align: center;
+    font-size: 1.1rem;
+    color: #666;
+    padding: 1rem;
+}
+
+/* ── Elemento activo en lista de reproducción ── */
+.file-item.active {
+    background: #e8e8ff;
+    border-left: 4px solid #667eea;
+    font-weight: 600;
+    color: #333;
+}
+
+.file-item {
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.file-item:hover {
+    background: #f5f5ff;
+}
+
+/* ── Utilidades ── */
+.hidden {
+    display: none;
+}
+
+/* ── Footer ── */
+footer {
+    text-align: center;
+    margin-top: 2rem;
+    color: rgba(255,255,255,0.7);
+    font-size: 0.85rem;
+}

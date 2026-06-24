@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generar Audios - InglesV5</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎧 Generar Audios</h1>
+            <a href="/" class="back-link">← Volver al inicio</a>
+        </header>
+
+        <div class="card">
+            <form id="audioForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="csv_file">Archivo CSV</label>
+                    <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+                    <small class="form-hint">
+                        El CSV debe tener dos columnas: <code>texto_español, texto_inglés</code>
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="output_dir">Carpeta de salida</label>
+                    <input type="text" id="output_dir" name="output_dir" 
+                           placeholder="Ej: C:\Users\tu_usuario\Desktop\audios_generados" 
+                           required>
+                    <small class="form-hint">
+                        Ruta completa de la carpeta donde se guardarán los archivos MP3 generados.
+                    </small>
+                </div>
+
+                <button type="submit" class="btn-primary" id="btnGenerar">
+                    ▶️ Generar Audios
+                </button>
+            </form>
+        </div>
+
+        <!-- Área de progreso (oculta inicialmente) -->
+        <div id="progressArea" class="card hidden">
+            <h2>Progreso</h2>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <p id="progressText">Iniciando...</p>
+            <div id="logArea" class="log-container"></div>
+        </div>
+
+        <!-- Área de resultados (oculta inicialmente) -->
+        <div id="resultArea" class="card hidden">
+            <h2>Resultados</h2>
+            <div id="resultContent"></div>
+            <a href="/" class="btn-secondary">← Volver al inicio</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('audioForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const btn = document.getElementById('btnGenerar');
+            const progressArea = document.getElementById('progressArea');
+            const resultArea = document.getElementById('resultArea');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const logArea = document.getElementById('logArea');
+            const resultContent = document.getElementById('resultContent');
+
+            // Ocultar resultados previos, mostrar progreso
+            resultArea.classList.add('hidden');
+            progressArea.classList.remove('hidden');
+            logArea.innerHTML = '';
+            progressBar.style.width = '0%';
+            progressText.textContent = 'Enviando archivo...';
+            btn.disabled = true;
+            btn.textContent = '⏳ Generando...';
+
+            try {
+                const response = await fetch('/procesar', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    progressBar.style.width = '100%';
+                    progressText.textContent = '¡Completado!';
+
+                    // Mostrar resultados
+                    let html = `<div class="result-summary">
+                        <p>✅ Proceso completado exitosamente.</p>
+                        <p><strong>Total audios generados:</strong> ${data.total}</p>
+                        <p><strong>Carpeta de salida:</strong> <code>${data.carpeta_salida}</code></p>
+                    </div>`;
+
+                    if (data.total > 0) {
+                        html += `<h3>Archivos generados:</h3>
+                        <div class="file-list">`;
+                        data.resultados.forEach(r => {
+                            html += `<div class="file-item">📄 ${r.archivo} <small>(silencio: ${r.silencio_ms}ms)</small></div>`;
+                        });
+                        html += `</div>`;
+                    }
+
+                    if (data.errores > 0 && data.detalles_errores) {
+                        html += `<h3>⚠️ Errores (${data.errores}):</h3>
+                        <div class="error-list">`;
+                        data.detalles_errores.forEach(e => {
+                            html += `<div class="error-item">❌ Línea ${e.linea}: "${e.texto}" → ${e.error}</div>`;
+                        });
+                        html += `</div>`;
+                    }
+
+                    resultContent.innerHTML = html;
+                    resultArea.classList.remove('hidden');
+                } else {
+                    progressBar.style.width = '0%';
+                    progressText.textContent = 'Error';
+                    resultContent.innerHTML = `<div class="result-error">❌ ${data.error}</div>`;
+                    resultArea.classList.remove('hidden');
+                }
+            } catch (err) {
+                progressBar.style.width = '0%';
+                progressText.textContent = 'Error de conexión';
+                resultContent.innerHTML = `<div class="result-error">❌ Error de conexión: ${err.message}</div>`;
+                resultArea.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '▶️ Generar Audios';
+            }
+        });
+    </script>
+</body>
+</html>

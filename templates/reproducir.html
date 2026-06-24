@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reproducir Audios - InglesV5</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 Reproducir Audios</h1>
+            <a href="/" class="back-link">← Volver al inicio</a>
+        </header>
+
+        <div class="card">
+            <form id="playerForm">
+                <div class="form-group">
+                    <label for="audio_dir">Carpeta con audios MP3</label>
+                    <input type="text" id="audio_dir" name="audio_dir" 
+                           placeholder="Ej: C:\Users\tu_usuario\Desktop\audios_generados" 
+                           required>
+                    <small class="form-hint">
+                        Ruta completa de la carpeta que contiene los archivos MP3 a reproducir.
+                        Los archivos se ordenarán por nombre automáticamente.
+                    </small>
+                </div>
+                <button type="submit" class="btn-primary" id="btnCargar">
+                    📂 Cargar Audios
+                </button>
+            </form>
+        </div>
+
+        <!-- Lista de archivos (oculta inicialmente) -->
+        <div id="fileListArea" class="card hidden">
+            <h2>Lista de reproducción</h2>
+            <div id="fileListContainer" class="file-list"></div>
+            <div class="player-controls">
+                <button id="btnPlayAll" class="btn-play" disabled>▶️ Reproducir todo</button>
+            </div>
+        </div>
+
+        <!-- Reproductor (oculto inicialmente) -->
+        <div id="playerArea" class="card hidden">
+            <h2 id="nowPlaying">Reproduciendo: —</h2>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="playbackProgress"></div>
+            </div>
+            <div class="time-display">
+                <span id="currentTime">00:00</span> / <span id="totalTime">00:00</span>
+            </div>
+            <div class="transport-controls">
+                <button id="btnPrev" class="btn-transport" title="Anterior">⏮️</button>
+                <button id="btnPlayPause" class="btn-transport btn-large" title="Reproducir/Pausar">▶️</button>
+                <button id="btnStop" class="btn-transport" title="Parar">⏹️</button>
+                <button id="btnNext" class="btn-transport" title="Siguiente">⏭️</button>
+            </div>
+            <p id="playlistInfo" class="playlist-info">Canción 0 de 0</p>
+        </div>
+
+        <!-- Indicador de carga -->
+        <div id="loadingArea" class="card hidden">
+            <p class="loading-text">⏳ Escaneando directorio...</p>
+        </div>
+
+        <!-- Área de error -->
+        <div id="errorArea" class="card hidden">
+            <div id="errorContent" class="result-error"></div>
+        </div>
+    </div>
+
+    <script>
+        // ── Estado del reproductor ──
+        let audioFiles = [];
+        let currentIndex = -1;
+        let isPlaying = false;
+        let isPaused = false;
+        let audioElement = null;
+        let audioErrorHandler = null;
+
+        // ── Elementos DOM ──
+        const form = document.getElementById('playerForm');
+        const audioDirInput = document.getElementById('audio_dir');
+        const btnCargar = document.getElementById('btnCargar');
+        const fileListArea = document.getElementById('fileListArea');
+        const fileListContainer = document.getElementById('fileListContainer');
+        const playerArea = document.getElementById('playerArea');
+        const loadingArea = document.getElementById('loadingArea');
+        const errorArea = document.getElementById('errorArea');
+        const errorContent = document.getElementById('errorContent');
+        const btnPlayAll = document.getElementById('btnPlayAll');
+        const nowPlaying = document.getElementById('nowPlaying');
+        const playbackProgress = document.getElementById('playbackProgress');
+        const currentTimeSpan = document.getElementById('currentTime');
+        const totalTimeSpan = document.getElementById('totalTime');
+        const btnPrev = document.getElementById('btnPrev');
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const btnStop = document.getElementById('btnStop');
+        const btnNext = document.getElementById('btnNext');
+        const playlistInfo = document.getElementById('playlistInfo');
+
+        // ── Utilidades ──
+        function formatTime(seconds) {
+            if (isNaN(seconds) || seconds < 0) return '00:00';
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ── Cargar lista de archivos ──
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const dir = audioDirInput.value.trim();
+            if (!dir) return;
+
+            // Resetear estado
+            limpiarTodo();
+            audioFiles = [];
+            currentIndex = -1;
+            isPlaying = false;
+            isPaused = false;
+            fileListArea.classList.add('hidden');
+            playerArea.classList.add('hidden');
+            errorArea.classList.add('hidden');
+            loadingArea.classList.remove('hidden');
+            btnCargar.disabled = true;
+
+            try {
+                const response = await fetch('/listar_audios', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ directorio: dir })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    audioFiles = data.archivos;
+                    mostrarListaArchivos();
+                } else {
+                    errorContent.textContent = data.error;
+                    errorArea.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorContent.textContent = 'Error de conexión: ' + err.message;
+                errorArea.classList.remove('hidden');
+            } finally {
+                loadingArea.classList.add('hidden');
+                btnCargar.disabled = false;
+            }
+        });
+
+        // ── Mostrar lista de archivos ──
+        function mostrarListaArchivos() {
+            let html = '';
+            audioFiles.forEach((f, i) => {
+                html += `<div class="file-item" data-index="${i}">
+                    ${i + 1}. ${escapeHtml(f.nombre)}
+                    <small>(${formatTime(f.duracion_segundos)})</small>
+                </div>`;
+            });
+            fileListContainer.innerHTML = html;
+            fileListArea.classList.remove('hidden');
+            btnPlayAll.disabled = audioFiles.length === 0;
+
+            // Click en un archivo para reproducir desde ahí
+            fileListContainer.querySelectorAll('.file-item').forEach(el => {
+                el.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.index);
+                    reproducirDesde(idx);
+                });
+            });
+        }
+
+        // ── Reproducir desde índice ──
+        function reproducirDesde(idx) {
+            if (idx < 0 || idx >= audioFiles.length) return;
+
+            // Limpiar reproducción anterior de forma segura
+            limpiarAudio();
+
+            currentIndex = idx;
+            const file = audioFiles[idx];
+            const url = `/servir_audio?archivo=${encodeURIComponent(file.nombre)}&directorio=${encodeURIComponent(audioDirInput.value.trim())}`;
+
+            // Crear nuevo elemento de audio
+            audioElement = new Audio(url);
+            audioElement.preload = 'auto';
+
+            audioElement.addEventListener('loadedmetadata', function() {
+                totalTimeSpan.textContent = formatTime(audioElement.duration);
+                playbackProgress.style.width = '0%';
+                currentTimeSpan.textContent = '00:00';
+                playlistInfo.textContent = `Canción ${currentIndex + 1} de ${audioFiles.length}`;
+                nowPlaying.textContent = `Reproduciendo: ${file.nombre}`;
+                actualizarResaltado();
+            });
+
+            audioElement.addEventListener('timeupdate', function() {
+                if (audioElement.duration) {
+                    const pct = (audioElement.currentTime / audioElement.duration) * 100;
+                    playbackProgress.style.width = pct + '%';
+                    currentTimeSpan.textContent = formatTime(audioElement.currentTime);
+                }
+            });
+
+            audioElement.addEventListener('ended', function() {
+                // Auto-siguiente
+                if (currentIndex < audioFiles.length - 1) {
+                    reproducirDesde(currentIndex + 1);
+                } else {
+                    // Llegó al final
+                    isPlaying = false;
+                    isPaused = false;
+                    btnPlayPause.textContent = '▶️';
+                    nowPlaying.textContent = 'Reproducción finalizada';
+                }
+            });
+
+            // Guardar referencia al handler de error para poder removerlo luego
+            audioErrorHandler = function() {
+                alert('Error al reproducir: ' + file.nombre);
+                btnPlayPause.textContent = '▶️';
+                isPlaying = false;
+                isPaused = false;
+            };
+            audioElement.addEventListener('error', audioErrorHandler);
+
+            // Intentar reproducir
+            audioElement.play().then(() => {
+                isPlaying = true;
+                isPaused = false;
+                btnPlayPause.textContent = '⏸️';
+                playerArea.classList.remove('hidden');
+            }).catch(err => {
+                alert('No se pudo iniciar la reproducción: ' + err.message);
+            });
+        }
+
+        // ── Limpiar solo el audio (sin tocar la UI) ──
+        function limpiarAudio() {
+            if (audioElement) {
+                // Remover el handler de error para evitar falsos positivos
+                if (audioErrorHandler) {
+                    audioElement.removeEventListener('error', audioErrorHandler);
+                    audioErrorHandler = null;
+                }
+                audioElement.pause();
+                audioElement.src = '';
+                audioElement.load();
+                audioElement = null;
+            }
+        }
+
+        // ── Detener reproducción (con reseteo completo de UI) ──
+        function detenerReproduccion() {
+            limpiarAudio();
+            isPlaying = false;
+            isPaused = false;
+            btnPlayPause.textContent = '▶️';
+            playbackProgress.style.width = '0%';
+            currentTimeSpan.textContent = '00:00';
+            totalTimeSpan.textContent = '00:00';
+        }
+
+        // ── Limpiar todo (para cuando se recarga la lista) ──
+        function limpiarTodo() {
+            detenerReproduccion();
+            fileListArea.classList.add('hidden');
+            playerArea.classList.add('hidden');
+            errorArea.classList.add('hidden');
+        }
+
+        // ── Actualizar resaltado en la lista ──
+        function actualizarResaltado() {
+            fileListContainer.querySelectorAll('.file-item').forEach(el => {
+                el.classList.remove('active');
+                if (parseInt(el.dataset.index) === currentIndex) {
+                    el.classList.add('active');
+                    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            });
+        }
+
+        // ── Eventos de botones ──
+        btnPlayAll.addEventListener('click', function() {
+            if (audioFiles.length > 0) {
+                reproducirDesde(0);
+            }
+        });
+
+        btnPlayPause.addEventListener('click', function() {
+            if (!audioElement) return;
+
+            if (isPlaying && !isPaused) {
+                // Pausar
+                audioElement.pause();
+                isPaused = true;
+                btnPlayPause.textContent = '▶️';
+            } else {
+                // Reanudar
+                audioElement.play().then(() => {
+                    isPaused = false;
+                    isPlaying = true;
+                    btnPlayPause.textContent = '⏸️';
+                }).catch(err => {
+                    alert('Error al reanudar: ' + err.message);
+                });
+            }
+        });
+
+        btnStop.addEventListener('click', function() {
+            detenerReproduccion();
+            nowPlaying.textContent = 'Reproducción detenida';
+            playlistInfo.textContent = '';
+            actualizarResaltado();
+        });
+
+        btnNext.addEventListener('click', function() {
+            if (currentIndex < audioFiles.length - 1) {
+                reproducirDesde(currentIndex + 1);
+            }
+        });
+
+        btnPrev.addEventListener('click', function() {
+            if (currentIndex > 0) {
+                reproducirDesde(currentIndex - 1);
+            }
+        });
+    </script>
+</body>
+</html>
