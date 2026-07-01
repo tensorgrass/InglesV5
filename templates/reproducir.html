@@ -16,13 +16,16 @@
         <div class="card">
             <form id="playerForm">
                 <div class="form-group">
-                    <label for="audio_dir">Carpeta con audios MP3</label>
-                    <input type="text" id="audio_dir" name="audio_dir" 
-                           placeholder="Ej: C:\Users\tu_usuario\Desktop\audios_generados" 
-                           required>
+                    <label for="tema_select">Seleccionar tema</label>
+                    <select id="tema_select" name="tema_id" required>
+                        <option value="">-- Selecciona un tema --</option>
+                        {% for tema in temas %}
+                        <option value="{{ tema.id }}">{{ tema.name }} ({{ tema.total_pares }} pares)</option>
+                        {% endfor %}
+                    </select>
                     <small class="form-hint">
-                        Ruta completa de la carpeta que contiene los archivos MP3 a reproducir.
-                        Los archivos se ordenarán por nombre automáticamente.
+                        Selecciona un tema de la lista. Los audios se reproducirán secuencialmente:
+                        🇪🇸 Español → ⏸️ Pausa → 🇬🇧 Inglés
                     </small>
                 </div>
                 <button type="submit" class="btn-primary" id="btnCargar">
@@ -43,6 +46,12 @@
         <!-- Reproductor (oculto inicialmente) -->
         <div id="playerArea" class="card hidden">
             <h2 id="nowPlaying">Reproduciendo: —</h2>
+            <div id="phaseIndicator" class="phase-indicator">
+                <span id="phaseEs" class="phase-phase">🇪🇸 Escuchando español...</span>
+                <span id="phasePause" class="phase-phase hidden">⏸️ Pausa de <span id="pauseCountdown">0</span>ms...</span>
+                <span id="phaseEn" class="phase-phase hidden">🇬🇧 Repitiendo en inglés...</span>
+                <span id="phaseDone" class="phase-phase phase-done hidden">✅ ¡Completado!</span>
+            </div>
             <div class="progress-bar-container">
                 <div class="progress-bar" id="playbackProgress"></div>
             </div>
@@ -55,7 +64,7 @@
                 <button id="btnStop" class="btn-transport" title="Parar">⏹️</button>
                 <button id="btnNext" class="btn-transport" title="Siguiente">⏭️</button>
             </div>
-            <p id="playlistInfo" class="playlist-info">Canción 0 de 0</p>
+            <p id="playlistInfo" class="playlist-info">Par 0 de 0</p>
         </div>
 
         <!-- Indicador de carga -->
@@ -71,16 +80,19 @@
 
     <script>
         // ── Estado del reproductor ──
-        let audioFiles = [];
+        let pares = [];          // Array de pares {clave, es: {...}, en: {...}, pausa_ms}
+        let sueltos = [];        // Archivos sin pareja
         let currentIndex = -1;
         let isPlaying = false;
         let isPaused = false;
+        let phase = 'stopped';   // 'stopped', 'es', 'pause', 'en', 'done'
         let audioElement = null;
+        let pauseTimeout = null;
         let audioErrorHandler = null;
 
         // ── Elementos DOM ──
         const form = document.getElementById('playerForm');
-        const audioDirInput = document.getElementById('audio_dir');
+        const temaSelect = document.getElementById('tema_select');
         const btnCargar = document.getElementById('btnCargar');
         const fileListArea = document.getElementById('fileListArea');
         const fileListContainer = document.getElementById('fileListContainer');
@@ -90,6 +102,12 @@
         const errorContent = document.getElementById('errorContent');
         const btnPlayAll = document.getElementById('btnPlayAll');
         const nowPlaying = document.getElementById('nowPlaying');
+        const phaseIndicator = document.getElementById('phaseIndicator');
+        const phaseEs = document.getElementById('phaseEs');
+        const phasePause = document.getElementById('phasePause');
+        const phaseEn = document.getElementById('phaseEn');
+        const phaseDone = document.getElementById('phaseDone');
+        const pauseCountdown = document.getElementById('pauseCountdown');
         const playbackProgress = document.getElementById('playbackProgress');
         const currentTimeSpan = document.getElementById('currentTime');
         const totalTimeSpan = document.getElementById('totalTime');
@@ -113,19 +131,48 @@
             return div.innerHTML;
         }
 
+        // ── Utilidades de fase ──
+        function ocultarTodasLasFases() {
+            phaseEs.classList.add('hidden');
+            phasePause.classList.add('hidden');
+            phaseEn.classList.add('hidden');
+            phaseDone.classList.add('hidden');
+        }
+
+        function mostrarFase(fase) {
+            ocultarTodasLasFases();
+            if (fase === 'es') phaseEs.classList.remove('hidden');
+            else if (fase === 'pause') phasePause.classList.remove('hidden');
+            else if (fase === 'en') phaseEn.classList.remove('hidden');
+            else if (fase === 'done') phaseDone.classList.remove('hidden');
+            phase = fase;
+        }
+
+        function obtenerParActual() {
+            if (currentIndex >= 0 && currentIndex < pares.length) {
+                return pares[currentIndex];
+            }
+            return null;
+        }
+
+        let currentDirectorios = {};  // Almacena el directorio del tema para servir audios
+
         // ── Cargar lista de archivos ──
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const dir = audioDirInput.value.trim();
-            if (!dir) return;
+            const temaId = temaSelect.value;
+            if (!temaId) return;
 
             // Resetear estado
             limpiarTodo();
-            audioFiles = [];
+            pares = [];
+            sueltos = [];
             currentIndex = -1;
             isPlaying = false;
             isPaused = false;
+            phase = 'stopped';
+            currentDirectorios = {};
             fileListArea.classList.add('hidden');
             playerArea.classList.add('hidden');
             errorArea.classList.add('hidden');
@@ -136,13 +183,17 @@
                 const response = await fetch('/listar_audios', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ directorio: dir })
+                    body: JSON.stringify({ tema_id: parseInt(temaId) })
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    audioFiles = data.archivos;
+                    pares = data.pares || [];
+                    sueltos = data.sueltos || [];
+                    currentDirectorios = {
+                        base: data.directorio
+                    };
                     mostrarListaArchivos();
                 } else {
                     errorContent.textContent = data.error;
@@ -160,37 +211,116 @@
         // ── Mostrar lista de archivos ──
         function mostrarListaArchivos() {
             let html = '';
-            audioFiles.forEach((f, i) => {
-                html += `<div class="file-item" data-index="${i}">
-                    ${i + 1}. ${escapeHtml(f.nombre)}
-                    <small>(${formatTime(f.duracion_segundos)})</small>
-                </div>`;
-            });
+            const totalItems = pares.length + sueltos.length;
+
+            // Mostrar pares ES/EN
+            if (pares.length > 0) {
+                html += `<div class="pair-header">Pares Español ↔ Inglés:</div>`;
+                pares.forEach((p, i) => {
+                    const esName = p.es ? p.es.nombre : '(sin español)';
+                    const enName = p.en ? p.en.nombre : '(sin inglés)';
+                    const esDur = p.es ? formatTime(p.es.duracion_segundos) : '--:--';
+                    const enDur = p.en ? formatTime(p.en.duracion_segundos) : '--:--';
+                    html += `<div class="file-item file-pair" data-index="${i}" data-type="pair">
+                        <span class="pair-num">${i + 1}.</span>
+                        <span class="pair-es">🇪🇸 ${escapeHtml(esName)} <small>(${esDur})</small></span>
+                        <span class="pair-arrow">→</span>
+                        <span class="pair-en">🇬🇧 ${escapeHtml(enName)} <small>(${enDur})</small></span>
+                        <span class="pair-pause">⏸️ ${p.pausa_ms}ms</span>
+                    </div>`;
+                });
+            }
+
+            // Mostrar archivos sueltos si hay
+            if (sueltos.length > 0) {
+                html += `<div class="pair-header">Archivos individuales:</div>`;
+                sueltos.forEach((f, i) => {
+                    const idx = pares.length + i;
+                    html += `<div class="file-item file-single" data-index="${idx}" data-type="single">
+                        ${escapeHtml(f.nombre)} <small>(${formatTime(f.duracion_segundos)})</small>
+                    </div>`;
+                });
+            }
+
+            if (!html) {
+                html = '<p class="empty-msg">No se encontraron archivos MP3.</p>';
+            }
+
             fileListContainer.innerHTML = html;
             fileListArea.classList.remove('hidden');
-            btnPlayAll.disabled = audioFiles.length === 0;
+            btnPlayAll.disabled = totalItems === 0;
 
             // Click en un archivo para reproducir desde ahí
-            fileListContainer.querySelectorAll('.file-item').forEach(el => {
+            fileListContainer.querySelectorAll('.file-pair').forEach(el => {
                 el.addEventListener('click', function() {
                     const idx = parseInt(this.dataset.index);
-                    reproducirDesde(idx);
+                    reproducirParDesde(idx);
+                });
+            });
+            fileListContainer.querySelectorAll('.file-single').forEach(el => {
+                el.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.index);
+                    const sueltoIdx = idx - pares.length;
+                    if (sueltoIdx >= 0 && sueltoIdx < sueltos.length) {
+                        currentIndex = idx;
+                        limpiarAudio();
+                        reproducirArchivoSuelto(sueltoIdx);
+                    }
                 });
             });
         }
 
-        // ── Reproducir desde índice ──
-        function reproducirDesde(idx) {
-            if (idx < 0 || idx >= audioFiles.length) return;
+        // ── Reproducir par ES/EN desde índice ──
+        function reproducirParDesde(idx) {
+            if (idx < 0 || idx >= pares.length) return;
+            currentIndex = idx;
+            limpiarAudio();
+            if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
+            playerArea.classList.remove('hidden');
+            reproducirFaseEs();
+        }
 
-            // Limpiar reproducción anterior de forma segura
+        // ── Reproducir fase ES ──
+        function reproducirFaseEs() {
+            const par = obtenerParActual();
+            if (!par || !par.es) {
+                if (par && par.en) { reproducirFaseEn(); return; }
+                avanzarAlSiguiente();
+                return;
+            }
+
+            mostrarFase('es');
+            const url = `/servir_audio?archivo=${encodeURIComponent(par.es.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`;
+            prepararAudio(url, function() {
+                mostrarFase('pause');
+                iniciarPausa();
+            });
+            nowPlaying.textContent = `🇪🇸 ${par.clave}`;
+            playlistInfo.textContent = `Par ${currentIndex + 1} de ${pares.length + sueltos.length}`;
+            actualizarResaltado();
+        }
+
+        // ── Reproducir fase EN ──
+        function reproducirFaseEn() {
+            const par = obtenerParActual();
+            if (!par || !par.en) {
+                avanzarAlSiguiente();
+                return;
+            }
+
+            mostrarFase('en');
+            const url = `/servir_audio?archivo=${encodeURIComponent(par.en.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`;
+            prepararAudio(url, function() {
+                mostrarFase('done');
+                setTimeout(function() { avanzarAlSiguiente(); }, 800);
+            });
+            nowPlaying.textContent = `🇬🇧 ${par.clave}`;
+        }
+
+        // ── Preparar y reproducir un audio ──
+        function prepararAudio(url, onEndedCallback) {
             limpiarAudio();
 
-            currentIndex = idx;
-            const file = audioFiles[idx];
-            const url = `/servir_audio?archivo=${encodeURIComponent(file.nombre)}&directorio=${encodeURIComponent(audioDirInput.value.trim())}`;
-
-            // Crear nuevo elemento de audio
             audioElement = new Audio(url);
             audioElement.preload = 'auto';
 
@@ -198,9 +328,6 @@
                 totalTimeSpan.textContent = formatTime(audioElement.duration);
                 playbackProgress.style.width = '0%';
                 currentTimeSpan.textContent = '00:00';
-                playlistInfo.textContent = `Canción ${currentIndex + 1} de ${audioFiles.length}`;
-                nowPlaying.textContent = `Reproduciendo: ${file.nombre}`;
-                actualizarResaltado();
             });
 
             audioElement.addEventListener('timeupdate', function() {
@@ -212,36 +339,95 @@
             });
 
             audioElement.addEventListener('ended', function() {
-                // Auto-siguiente
-                if (currentIndex < audioFiles.length - 1) {
-                    reproducirDesde(currentIndex + 1);
-                } else {
-                    // Llegó al final
-                    isPlaying = false;
-                    isPaused = false;
-                    btnPlayPause.textContent = '▶️';
-                    nowPlaying.textContent = 'Reproducción finalizada';
-                }
+                if (onEndedCallback) onEndedCallback();
             });
 
-            // Guardar referencia al handler de error para poder removerlo luego
             audioErrorHandler = function() {
-                alert('Error al reproducir: ' + file.nombre);
-                btnPlayPause.textContent = '▶️';
-                isPlaying = false;
-                isPaused = false;
+                console.error('Error al reproducir audio');
+                if (onEndedCallback) onEndedCallback();
             };
             audioElement.addEventListener('error', audioErrorHandler);
 
-            // Intentar reproducir
             audioElement.play().then(() => {
                 isPlaying = true;
                 isPaused = false;
                 btnPlayPause.textContent = '⏸️';
-                playerArea.classList.remove('hidden');
-            }).catch(err => {
-                alert('No se pudo iniciar la reproducción: ' + err.message);
+            }).catch(function(err) {
+                console.error('No se pudo iniciar la reproducción:', err);
+                if (onEndedCallback) onEndedCallback();
             });
+        }
+
+        // ── Iniciar pausa calculada ──
+        function iniciarPausa() {
+            const par = obtenerParActual();
+            if (!par) return;
+
+            const pausaMs = par.pausa_ms;
+            pauseCountdown.textContent = pausaMs;
+
+            const startTime = Date.now();
+            pauseTimeout = setInterval(function() {
+                const elapsed = Date.now() - startTime;
+                const remaining = Math.max(0, pausaMs - elapsed);
+                pauseCountdown.textContent = remaining;
+                const pct = Math.min((elapsed / pausaMs) * 100, 100);
+                playbackProgress.style.width = pct + '%';
+                currentTimeSpan.textContent = formatTime(elapsed / 1000);
+
+                if (remaining <= 0) {
+                    clearInterval(pauseTimeout);
+                    pauseTimeout = null;
+                    reproducirFaseEn();
+                }
+            }, 50);
+            totalTimeSpan.textContent = formatTime(pausaMs / 1000);
+        }
+
+        // ── Avanzar al siguiente par/archivo ──
+        function avanzarAlSiguiente() {
+            const totalItems = pares.length + sueltos.length;
+            if (currentIndex < totalItems - 1) {
+                const nextIdx = currentIndex + 1;
+                if (nextIdx < pares.length) {
+                    reproducirParDesde(nextIdx);
+                } else {
+                    currentIndex = nextIdx;
+                    limpiarAudio();
+                    reproducirArchivoSuelto(nextIdx - pares.length);
+                }
+            } else {
+                isPlaying = false;
+                isPaused = false;
+                btnPlayPause.textContent = '▶️';
+                nowPlaying.textContent = '🎉 Reproducción finalizada';
+                mostrarFase('done');
+                document.getElementById('phaseDone').textContent = '✅ ¡Lista completa!';
+                playbackProgress.style.width = '100%';
+                currentTimeSpan.textContent = '00:00';
+                totalTimeSpan.textContent = '00:00';
+                actualizarResaltado();
+            }
+        }
+
+        // ── Reproducir archivo suelto ──
+        function reproducirArchivoSuelto(idx) {
+            if (idx >= sueltos.length) {
+                avanzarAlSiguiente();
+                return;
+            }
+            const file = sueltos[idx];
+            mostrarFase('es');
+            phaseEs.textContent = '🎵 Reproduciendo...';
+
+            const url = `/servir_audio?archivo=${encodeURIComponent(file.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`;
+            prepararAudio(url, function() {
+                mostrarFase('done');
+                setTimeout(function() { avanzarAlSiguiente(); }, 500);
+            });
+            nowPlaying.textContent = `🎵 ${file.nombre}`;
+            playlistInfo.textContent = `Archivo ${currentIndex + 1} de ${pares.length + sueltos.length}`;
+            actualizarResaltado();
         }
 
         // ── Limpiar solo el audio (sin tocar la UI) ──
@@ -291,47 +477,96 @@
 
         // ── Eventos de botones ──
         btnPlayAll.addEventListener('click', function() {
-            if (audioFiles.length > 0) {
-                reproducirDesde(0);
+            const totalItems = pares.length + sueltos.length;
+            if (totalItems > 0) {
+                if (pares.length > 0) {
+                    reproducirParDesde(0);
+                } else {
+                    currentIndex = 0;
+                    limpiarAudio();
+                    reproducirArchivoSuelto(0);
+                }
             }
         });
 
         btnPlayPause.addEventListener('click', function() {
+            if (phase === 'pause') {
+                if (isPaused) {
+                    isPaused = false;
+                    btnPlayPause.textContent = '⏸️';
+                    const par = obtenerParActual();
+                    if (par && pauseTimeout) {
+                        const remaining = parseInt(pauseCountdown.textContent);
+                        const startTime = Date.now();
+                        pauseTimeout = setInterval(function() {
+                            const elapsed = Date.now() - startTime;
+                            const r = Math.max(0, remaining - elapsed);
+                            pauseCountdown.textContent = r;
+                            const pct = Math.min(((remaining - r) / par.pausa_ms) * 100, 100);
+                            playbackProgress.style.width = pct + '%';
+                            if (r <= 0) {
+                                clearInterval(pauseTimeout);
+                                pauseTimeout = null;
+                                reproducirFaseEn();
+                            }
+                        }, 50);
+                    }
+                } else {
+                    isPaused = true;
+                    btnPlayPause.textContent = '▶️';
+                    if (pauseTimeout) {
+                        clearInterval(pauseTimeout);
+                        pauseTimeout = null;
+                    }
+                }
+                return;
+            }
+
             if (!audioElement) return;
 
             if (isPlaying && !isPaused) {
-                // Pausar
                 audioElement.pause();
                 isPaused = true;
                 btnPlayPause.textContent = '▶️';
-            } else {
-                // Reanudar
+            } else if (isPaused) {
                 audioElement.play().then(() => {
                     isPaused = false;
                     isPlaying = true;
                     btnPlayPause.textContent = '⏸️';
-                }).catch(err => {
-                    alert('Error al reanudar: ' + err.message);
+                }).catch(function(err) {
+                    console.error('Error al reanudar:', err);
                 });
             }
         });
 
         btnStop.addEventListener('click', function() {
+            if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
             detenerReproduccion();
+            ocultarTodasLasFases();
+            phase = 'stopped';
             nowPlaying.textContent = 'Reproducción detenida';
             playlistInfo.textContent = '';
+            phaseEs.textContent = '🇪🇸 Escuchando español...';
             actualizarResaltado();
         });
 
         btnNext.addEventListener('click', function() {
-            if (currentIndex < audioFiles.length - 1) {
-                reproducirDesde(currentIndex + 1);
-            }
+            if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
+            limpiarAudio();
+            avanzarAlSiguiente();
         });
 
         btnPrev.addEventListener('click', function() {
             if (currentIndex > 0) {
-                reproducirDesde(currentIndex - 1);
+                if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
+                limpiarAudio();
+                const prevIdx = currentIndex - 1;
+                if (prevIdx < pares.length) {
+                    reproducirParDesde(prevIdx);
+                } else {
+                    currentIndex = prevIdx;
+                    reproducirArchivoSuelto(prevIdx - pares.length);
+                }
             }
         });
     </script>

@@ -148,13 +148,15 @@ header h1 {
 }
 
 .form-group input[type="file"],
-.form-group input[type="text"] {
+.form-group input[type="text"],
+.form-group textarea {
     width: 100%;
     padding: 0.7rem;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
     font-size: 1rem;
     transition: border-color 0.2s;
+    font-family: inherit;
 }
 
 .form-group input:focus {
@@ -415,6 +417,99 @@ header h1 {
     font-size: 1.1rem;
     color: #666;
     padding: 1rem;
+}
+
+/* ── Indicador de fase en reproductor secuencial ── */
+.phase-indicator {
+    text-align: center;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background: #f9f9f9;
+    border-radius: 8px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.phase-phase {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #555;
+    animation: fadeIn 0.3s ease;
+}
+
+.phase-done {
+    color: #28a745;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Pares en lista de reproducción ── */
+.pair-header {
+    font-weight: 600;
+    color: #667eea;
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 0.3rem;
+}
+
+.file-pair {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.pair-num {
+    font-weight: 600;
+    color: #999;
+    min-width: 1.5rem;
+}
+
+.pair-es {
+    color: #333;
+}
+
+.pair-arrow {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+.pair-en {
+    color: #333;
+}
+
+.pair-pause {
+    color: #667eea;
+    font-size: 0.8rem;
+    margin-left: auto;
+}
+
+.file-single {
+    color: #555;
+}
+
+.empty-msg {
+    text-align: center;
+    color: #999;
+    padding: 1rem;
+}
+
+.play-hint {
+    text-align: center;
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+}
+
+.sep-arrow {
+    color: #aaa;
+    margin: 0 0.3rem;
 }
 
 /* ── Elemento activo en lista de reproducción ── */

@@ -16,20 +16,36 @@
         <div class="card">
             <form id="audioForm" enctype="multipart/form-data">
                 <div class="form-group">
-                    <label for="csv_file">Archivo CSV</label>
-                    <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+                    <label for="tema">Nombre del tema</label>
+                    <input type="text" id="tema" name="tema" 
+                           placeholder="Ej: Verbos irregulares, Vocabulario diario, ..." 
+                           list="temas-list"
+                           required>
+                    <datalist id="temas-list">
+                        {% for tema in temas %}
+                        <option value="{{ tema.name }}">
+                        {% endfor %}
+                    </datalist>
                     <small class="form-hint">
-                        El CSV debe tener dos columnas: <code>texto_español, texto_inglés</code>
+                        Nombre del tema. Los audios se guardarán en <code>static/audio/<tema></code>.
+                        Si el tema ya existe, los nuevos audios se añadirán al mismo.
                     </small>
                 </div>
 
                 <div class="form-group">
-                    <label for="output_dir">Carpeta de salida</label>
-                    <input type="text" id="output_dir" name="output_dir" 
-                           placeholder="Ej: C:\Users\tu_usuario\Desktop\audios_generados" 
-                           required>
+                    <label for="descripcion">Descripción del tema</label>
+                    <textarea id="descripcion" name="descripcion" rows="2"
+                              placeholder="Breve descripción del tema (opcional)"></textarea>
                     <small class="form-hint">
-                        Ruta completa de la carpeta donde se guardarán los archivos MP3 generados.
+                        Una pequeña descripción para identificar el contenido del tema.
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="csv_file">Archivo CSV</label>
+                    <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+                    <small class="form-hint">
+                        El CSV debe tener dos columnas: <code>texto_español, texto_inglés</code>
                     </small>
                 </div>
 
@@ -94,15 +110,21 @@
                     // Mostrar resultados
                     let html = `<div class="result-summary">
                         <p>✅ Proceso completado exitosamente.</p>
-                        <p><strong>Total audios generados:</strong> ${data.total}</p>
-                        <p><strong>Carpeta de salida:</strong> <code>${data.carpeta_salida}</code></p>
+                        <p><strong>Tema:</strong> ${data.tema}</p>
+                        <p><strong>Total pares generados:</strong> ${data.total}</p>
+                        <p><strong>Ruta:</strong> <code>${data.carpeta}</code></p>
                     </div>`;
 
                     if (data.total > 0) {
-                        html += `<h3>Archivos generados:</h3>
+                        html += `<h3>Archivos generados (pares ES/EN):</h3>
                         <div class="file-list">`;
                         data.resultados.forEach(r => {
-                            html += `<div class="file-item">📄 ${r.archivo} <small>(silencio: ${r.silencio_ms}ms)</small></div>`;
+                            html += `<div class="file-item">
+                                🇪🇸 ${r.archivo_es}
+                                <span class="sep-arrow">→</span>
+                                🇬🇧 ${r.archivo_en}
+                                <small>(pausa: ${r.pausa_ms}ms)</small>
+                            </div>`;
                         });
                         html += `</div>`;
                     }

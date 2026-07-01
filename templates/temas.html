@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Temas - InglesV5</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Gestión de Temas</h1>
+            <a href="/" class="back-link">← Volver al inicio</a>
+        </header>
+        <div class="card">
+            <h2>Crear nuevo tema</h2>
+            <div class="form-group">
+                <input type="text" id="newTemaName" placeholder="Nombre del nuevo tema">
+            </div>
+            <div class="form-group">
+                <textarea id="newTemaDesc" rows="2" placeholder="Descripción del tema (opcional)"></textarea>
+            </div>
+            <button id="btnCrearTema" class="btn-primary">➕ Crear Tema</button>
+        </div>
+        <div id="temasContainer"></div>
+    </div>
+    <script>
+        async function cargarTemas() {
+            const c = document.getElementById('temasContainer');
+            try {
+                const r = await fetch('/api/temas');
+                const t = await r.json();
+                if (t.length === 0) { c.innerHTML = '<div class="card"><p class="empty-msg">No hay temas.</p></div>'; return; }
+                c.innerHTML = t.map(tm => temaHtml(tm)).join('');
+            } catch (e) { c.innerHTML = '<div class="card"><div class="result-error">Error: ' + e.message + '</div></div>'; }
+        }
+        function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        function temaHtml(t) {
+            var desc = t.description ? '<p class="tema-desc">' + esc(t.description) + '</p>' : '';
+            return '<div class="card tema-card" data-id="' + t.id + '"><div class="tema-header"><div class="tema-info"><h3 class="tema-name">' + esc(t.name) + '</h3>' + desc + '<p class="tema-meta">' + t.total_pares + ' pares</p></div><div class="tema-actions"><button class="btn-small btn-edit" onclick="editarTema(' + t.id + ',\'' + esc(t.name) + '\',\'' + esc(t.description || '') + '\')">✏️</button><button class="btn-small btn-delete" onclick="eliminarTema(' + t.id + ')">🗑️</button></div></div></div>';
+        }
+        document.getElementById('btnCrearTema').addEventListener('click', async function() {
+            const n = document.getElementById('newTemaName').value.trim();
+            const d = document.getElementById('newTemaDesc').value.trim();
+            if (!n) return;
+            try {
+                const r = await fetch('/api/temas', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name:n, description:d}) });
+                const res = await r.json();
+                if (res.id) { document.getElementById('newTemaName').value = ''; document.getElementById('newTemaDesc').value = ''; cargarTemas(); } else { alert('Error: ' + res.error); }
+            } catch (e) { alert('Error: ' + e.message); }
+        });
+        async function editarTema(id, n, descActual) {
+            const nn = prompt('Nuevo nombre:', n);
+            if (!nn || nn.trim() === n) return;
+            const nd = prompt('Nueva descripción:', descActual || '');
+            try {
+                const r = await fetch('/api/temas/' + id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name: nn.trim(), description: (nd || '').trim()}) });
+                const d = await r.json();
+                if (d.success) cargarTemas(); else alert('Error: ' + d.error);
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+        async function eliminarTema(id) {
+            if (!confirm('¿Eliminar tema y sus audios?')) return;
+            try {
+                const r = await fetch('/api/temas/' + id, { method: 'DELETE' });
+                const d = await r.json();
+                if (d.success) cargarTemas(); else alert('Error: ' + d.error);
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+        document.getElementById('newTemaName').addEventListener('keypress', function(e) { if (e.key === 'Enter') document.getElementById('btnCrearTema').click(); });
+        cargarTemas();
+    </script>
+    <style>
+        .tema-card { margin-bottom: 0.8rem; }
+        .tema-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+        .tema-info { flex: 1; }
+        .tema-name { color: #667eea; font-size: 1.1rem; margin-bottom: 0.2rem; }
+        .tema-desc { color: #666; font-size: 0.9rem; margin-bottom: 0.3rem; font-style: italic; }
+        .tema-meta { color: #888; font-size: 0.85rem; }
+        .tema-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+        .btn-small { width: 36px; height: 36px; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-edit { background: #e8e8ff; color: #667eea; }
+        .btn-edit:hover { background: #d0d0ff; }
+        .btn-delete { background: #ffe8e8; color: #c00; }
+        .btn-delete:hover { background: #ffd0d0; }
+    </style>
+</body>
+</html>
