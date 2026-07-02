@@ -581,6 +581,79 @@ def servir_audio():
     return send_file(ruta_completa, mimetype='audio/mpeg', conditional=True)
 
 
+# ── Descarga de frases ──
+
+@app.route('/descargar-frases')
+def descargar_frases():
+    """Página para seleccionar temas y descargar frases en CSV."""
+    return render_template('descargar_frases.html')
+
+
+@app.route('/api/descargar-frases', methods=['POST'])
+def api_descargar_frases():
+    """
+    Recibe un array de IDs de temas y devuelve un CSV con todas las frases.
+    """
+    data = request.get_json()
+    tema_ids = data.get('tema_ids', [])
+
+    if not tema_ids or not isinstance(tema_ids, list):
+        return jsonify({'error': 'Debes especificar al menos un tema.'}), 400
+
+    conn = get_db()
+
+    # Obtener los temas
+    placeholders = ','.join('?' * len(tema_ids))
+    temas = conn.execute(
+        f"SELECT id, name FROM themes WHERE id IN ({placeholders})",
+        tema_ids
+    ).fetchall()
+
+    if not temas:
+        conn.close()
+        return jsonify({'error': 'No se encontraron los temas especificados.'}), 404
+
+    # Obtener los pares de audio de todos los temas seleccionados
+    pares = conn.execute(
+        f"""
+        SELECT ap.*, t.name as tema_nombre
+        FROM audio_pairs ap
+        JOIN themes t ON t.id = ap.theme_id
+        WHERE ap.theme_id IN ({placeholders})
+        ORDER BY t.name, ap.line_number ASC
+        """,
+        tema_ids
+    ).fetchall()
+    conn.close()
+
+    if not pares:
+        return jsonify({'error': 'Los temas seleccionados no tienen frases.'}), 404
+
+    # Generar CSV en memoria
+    import io
+    output = io.StringIO()
+    output.write('\ufeff')  # BOM para Excel (UTF-8)
+    writer = csv.writer(output)
+    writer.writerow(['Tema', 'Línea', 'Español', 'Inglés'])
+
+    for p in pares:
+        writer.writerow([p['tema_nombre'], p['line_number'], p['text_es'], p['text_en']])
+
+    csv_content = output.getvalue()
+    output.close()
+
+    # Devolver como descarga
+    from flask import Response
+    return Response(
+        csv_content,
+        mimetype='text/csv; charset=utf-8',
+        headers={
+            'Content-Disposition': f'attachment; filename=frases_{datetime.now().strftime("%Y-%m-%d_%H-%M")}.csv',
+            'Content-Type': 'text/csv; charset=utf-8'
+        }
+    )
+
+
 # ── Página de edición de temas ──
 
 @app.route('/temas')

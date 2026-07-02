@@ -1,0 +1,7 @@
+- 02/07/2026
+Quiero aprender ingles
+Genera un archivo csv.
+En la primera columna habra frases en español y en la segunda su traducción en ingles
+Habla 50 frases
+Las frases tienen que tener relación con la posición que un objeto puede estar con referencia a otro. Por ejemplo, alli, abajo, arriba, detras, junto
+Las frases no tienen que ser muy largas para poderlas aprender de memoria 

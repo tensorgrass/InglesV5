@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descargar Frases - InglesV5</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📥 Descargar Frases</h1>
+            <a href="/" class="back-link">← Volver al inicio</a>
+        </header>
+
+        <div class="card">
+            <h2>Selecciona los temas</h2>
+            <p class="select-hint">Selecciona uno o más temas para descargar todas sus frases en un archivo CSV.</p>
+            <div id="temasContainer" class="loading-text">Cargando temas...</div>
+            <button id="btnDescargar" class="btn-primary" disabled style="margin-top:1rem;">📥 Descargar CSV</button>
+        </div>
+    </div>
+    <script>
+        let temasData = [];
+
+        async function cargarTemas() {
+            const c = document.getElementById('temasContainer');
+            try {
+                const r = await fetch('/api/temas');
+                const t = await r.json();
+                temasData = t.filter(tm => tm.total_pares > 0);
+                if (temasData.length === 0) {
+                    c.innerHTML = '<div class="empty-msg">No hay temas con frases. Crea y genera audios primero.</div>';
+                    document.getElementById('btnDescargar').disabled = true;
+                    return;
+                }
+                c.innerHTML = temasData.map(tm => temaHtml(tm)).join('');
+                document.getElementById('btnDescargar').disabled = false;
+                actualizarContador();
+            } catch (e) {
+                c.innerHTML = '<div class="result-error">Error: ' + e.message + '</div>';
+            }
+        }
+
+        function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+        function temaHtml(t) {
+            var desc = t.description ? '<p class="tema-desc">' + esc(t.description) + '</p>' : '';
+            return '<div class="card tema-card"><label class="tema-label"><input type="checkbox" class="tema-checkbox" data-id="' + t.id + '" data-name="' + esc(t.name) + '" onchange="actualizarContador()"><div class="tema-info"><strong class="tema-name">' + esc(t.name) + '</strong>' + desc + '<span class="tema-meta">' + t.total_pares + ' pares</span></div></label></div>';
+        }
+
+        function actualizarContador() {
+            const checks = document.querySelectorAll('.tema-checkbox:checked');
+            const btn = document.getElementById('btnDescargar');
+            if (checks.length === 0) {
+                btn.textContent = '📥 Descargar CSV';
+                btn.disabled = true;
+            } else {
+                btn.textContent = '📥 Descargar CSV (' + checks.length + ' temas, ~' + contarPares(checks) + ' frases)';
+                btn.disabled = false;
+            }
+        }
+
+        function contarPares(checks) {
+            let total = 0;
+            checks.forEach(cb => {
+                const t = temasData.find(t => t.id == cb.dataset.id);
+                if (t) total += t.total_pares;
+            });
+            return total;
+        }
+
+        document.getElementById('btnDescargar').addEventListener('click', async function() {
+            const checks = document.querySelectorAll('.tema-checkbox:checked');
+            if (checks.length === 0) return;
+
+            const ids = [];
+            checks.forEach(cb => ids.push(parseInt(cb.dataset.id)));
+
+            try {
+                const btn = document.getElementById('btnDescargar');
+                btn.textContent = '⏳ Generando CSV...';
+                btn.disabled = true;
+
+                const r = await fetch('/api/descargar-frases', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tema_ids: ids })
+                });
+
+                if (!r.ok) {
+                    const err = await r.json();
+                    alert('Error: ' + (err.error || 'Error al generar el CSV'));
+                    btn.textContent = '📥 Descargar CSV';
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Descargar el blob como archivo
+                const blob = await r.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const ahora = new Date();
+                const ts = ahora.getFullYear() + '-' +
+                    String(ahora.getMonth()+1).padStart(2,'0') + '-' +
+                    String(ahora.getDate()).padStart(2,'0') + '_' +
+                    String(ahora.getHours()).padStart(2,'0') + '-' +
+                    String(ahora.getMinutes()).padStart(2,'0');
+                a.download = 'frases_' + ts + '.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                btn.textContent = '✅ ¡Descargado!';
+                setTimeout(() => {
+                    btn.textContent = '📥 Descargar CSV';
+                    btn.disabled = false;
+                    actualizarContador();
+                }, 2000);
+            } catch (e) {
+                alert('Error: ' + e.message);
+                document.getElementById('btnDescargar').textContent = '📥 Descargar CSV';
+                document.getElementById('btnDescargar').disabled = false;
+            }
+        });
+
+        cargarTemas();
+    </script>
+    <style>
+        .select-hint { color: #666; font-size: 0.95rem; margin-bottom: 1rem; }
+        .tema-card { margin-bottom: 0.5rem; padding: 0.8rem 1rem; }
+        .tema-card:last-child { margin-bottom: 0; }
+        .tema-label { display: flex; align-items: center; gap: 0.8rem; cursor: pointer; }
+        .tema-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #667eea; flex-shrink: 0; }
+        .tema-info { flex: 1; }
+        .tema-name { color: #667eea; font-size: 1rem; display: block; }
+        .tema-desc { color: #666; font-size: 0.85rem; margin: 0.1rem 0; font-style: italic; }
+        .tema-meta { color: #888; font-size: 0.8rem; }
+    </style>
+</body>
+</html>
