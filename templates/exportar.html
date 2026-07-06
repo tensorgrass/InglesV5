@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exportar Tema - InglesV5</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .result-success {
+            color: #28a745;
+            font-weight: 600;
+            padding: 1rem;
+            background: #f0fff4;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid #b7e4c7;
+        }
+
+        .result-success a {
+            color: #1a7a3a;
+            text-decoration: underline;
+        }
+
+        .export-summary {
+            margin-bottom: 1rem;
+        }
+
+        .export-summary p {
+            margin-bottom: 0.3rem;
+        }
+
+        .export-summary code {
+            background: #f0f0f0;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .html-link {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        .html-link:hover {
+            opacity: 0.9;
+        }
+
+        .btn-export {
+            display: inline-block;
+            width: 100%;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn-export:hover {
+            opacity: 0.9;
+        }
+
+        .btn-export:active {
+            transform: scale(0.98);
+        }
+
+        .btn-export:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 Exportar Tema</h1>
+            <a href="/" class="back-link">← Volver al inicio</a>
+        </header>
+
+        <div class="card">
+            <p class="form-hint" style="margin-bottom: 1rem;">
+                Selecciona un tema y especifica un directorio de destino. 
+                El proceso copiará todos los audios del tema al directorio indicado
+                y generará un archivo HTML que funciona completamente offline 
+                con el mismo reproductor secuencial (🇪🇸 Español → ⏸️ Pausa → 🇬🇧 Inglés).
+            </p>
+
+            <form id="exportForm">
+                <div class="form-group">
+                    <label for="tema_select">Seleccionar tema</label>
+                    <select id="tema_select" name="tema_id" required>
+                        <option value="">-- Selecciona un tema --</option>
+                        {% for tema in temas %}
+                        <option value="{{ tema.id }}">{{ tema.name }} ({{ tema.total_pares }} pares)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="destino">Directorio de destino</label>
+                    <input type="text" id="destino" name="destino" required
+                           placeholder="Ej: C:\Users\tu_usuario\Desktop\mi_tema_exportado"
+                           value="">
+                    <small class="form-hint">
+                        Ruta absoluta del directorio donde se copiarán los audios y se generará el archivo HTML.
+                        El directorio se creará automáticamente si no existe.
+                    </small>
+                </div>
+
+                <button type="submit" class="btn-export" id="btnExportar">
+                    📦 Exportar Tema
+                </button>
+            </form>
+        </div>
+
+        <!-- Indicador de carga -->
+        <div id="loadingArea" class="card hidden">
+            <p class="loading-text">⏳ Exportando tema...</p>
+        </div>
+
+        <!-- Resultado -->
+        <div id="resultArea" class="card hidden">
+            <div id="resultContent"></div>
+        </div>
+
+        <!-- Área de error -->
+        <div id="errorArea" class="card hidden">
+            <div id="errorContent" class="result-error"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('exportForm');
+        const temaSelect = document.getElementById('tema_select');
+        const destinoInput = document.getElementById('destino');
+        const btnExportar = document.getElementById('btnExportar');
+        const loadingArea = document.getElementById('loadingArea');
+        const resultArea = document.getElementById('resultArea');
+        const resultContent = document.getElementById('resultContent');
+        const errorArea = document.getElementById('errorArea');
+        const errorContent = document.getElementById('errorContent');
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const temaId = temaSelect.value;
+            const destino = destinoInput.value.trim();
+
+            if (!temaId || !destino) return;
+
+            // Resetear UI
+            resultArea.classList.add('hidden');
+            errorArea.classList.add('hidden');
+            loadingArea.classList.remove('hidden');
+            btnExportar.disabled = true;
+
+            try {
+                const response = await fetch('/api/exportar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tema_id: parseInt(temaId),
+                        destino: destino
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    let html = '<div class="export-summary">';
+                    html += '<div class="result-success">✅ Exportación completada con éxito</div>';
+                    html += '<p><strong>Tema:</strong> ' + data.tema + '</p>';
+                    html += '<p><strong>Destino:</strong> <code>' + data.destino + '</code></p>';
+                    html += '<p><strong>Audios exportados:</strong> ' + data.total_exportados + ' pares</p>';
+                    if (data.errores > 0) {
+                        html += '<p><strong>Errores:</strong> ' + data.errores + '</p>';
+                    }
+                    html += '<p><strong>Archivo HTML generado:</strong> <code>' + data.archivo_html + '</code></p>';
+                    html += '<p class="form-hint">Abre el archivo <code>' + data.archivo_html + '</code> en tu navegador para usar el reproductor offline.</p>';
+                    var href = 'file:///' + data.destino.replace(/\\/g, '/').replace(/^([A-Za-z]):\//, function(m, letter) { return letter.toLowerCase() + ':/'; }) + '/' + data.archivo_html;
+                    html += '<a href="' + href + '" class="html-link" target="_blank">▶️ Abrir reproductor offline</a>';
+                    html += '</div>';
+
+                    if (data.detalles_errores) {
+                        html += '<div class="error-list"><strong>Detalles de errores:</strong>';
+                        data.detalles_errores.forEach(function(err) {
+                            html += '<div class="error-item">Línea ' + err.linea + ' - ' + err.texto + ': ' + err.error + '</div>';
+                        });
+                        html += '</div>';
+                    }
+
+                    resultContent.innerHTML = html;
+                    resultArea.classList.remove('hidden');
+                } else {
+                    errorContent.textContent = data.error;
+                    errorArea.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorContent.textContent = 'Error de conexión: ' + err.message;
+                errorArea.classList.remove('hidden');
+            } finally {
+                loadingArea.classList.add('hidden');
+                btnExportar.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

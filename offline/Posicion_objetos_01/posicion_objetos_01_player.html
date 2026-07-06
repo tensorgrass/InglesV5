@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posicion objetos 01 - Reproductor Offline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacFontSystem, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .file-item {
+            padding: 0.3rem 0.5rem;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-item:hover {
+            background: #f5f5ff;
+        }
+
+        .file-item.active {
+            background: #e8e8ff;
+            border-left: 4px solid #667eea;
+            font-weight: 600;
+        }
+
+        .pair-header {
+            font-weight: 600;
+            color: #667eea;
+            padding: 0.5rem 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 0.3rem;
+        }
+
+        .file-pair {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .pair-num {
+            font-weight: 600;
+            color: #999;
+            min-width: 1.5rem;
+        }
+
+        .pair-es {
+            color: #333;
+        }
+
+        .pair-arrow {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        .pair-en {
+            color: #333;
+        }
+
+        .pair-pause {
+            color: #667eea;
+            font-size: 0.8rem;
+            margin-left: auto;
+        }
+
+        .player-controls {
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .btn-play {
+            padding: 0.7rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn-play:hover {
+            opacity: 0.9;
+        }
+
+        .btn-play:active {
+            transform: scale(0.98);
+        }
+
+        .btn-play:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .time-display {
+            text-align: center;
+            font-size: 0.95rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+            font-family: monospace;
+        }
+
+        .transport-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .btn-transport {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            background: #f0f0f0;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-transport:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-transport:active {
+            transform: scale(0.92);
+        }
+
+        .btn-large {
+            width: 60px;
+            height: 60px;
+            font-size: 1.6rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-large:hover {
+            opacity: 0.9;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .phase-indicator {
+            text-align: center;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: #f9f9f9;
+            border-radius: 8px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .phase-phase {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #555;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .phase-done {
+            color: #28a745;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        .playlist-info {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 0.5rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .info-card {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: #999;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎧 Posicion objetos 01</h1>
+            <p class="subtitle">Reproductor offline - Español → Inglés con pausa inteligente</p>
+        </header>
+
+        <div id="fileListArea" class="card">
+            <h2>Lista de reproducción</h2>
+            <div id="fileListContainer" class="file-list"></div>
+            <div class="player-controls">
+                <button id="btnPlayAll" class="btn-play">▶️ Reproducir todo</button>
+            </div>
+        </div>
+
+        <div id="playerArea" class="card hidden">
+            <h2 id="nowPlaying">Reproduciendo: —</h2>
+            <div id="phaseIndicator" class="phase-indicator">
+                <span id="phaseEs" class="phase-phase">🇪🇸 Escuchando español...</span>
+                <span id="phasePause" class="phase-phase hidden">⏸️ Pausa de <span id="pauseCountdown">0</span>ms...</span>
+                <span id="phaseEn" class="phase-phase hidden">🇬🇧 Repitiendo en inglés...</span>
+                <span id="phaseDone" class="phase-phase phase-done hidden">✅ ¡Completado!</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="playbackProgress"></div>
+            </div>
+            <div class="time-display">
+                <span id="currentTime">00:00</span> / <span id="totalTime">00:00</span>
+            </div>
+            <div class="transport-controls">
+                <button id="btnPrev" class="btn-transport" title="Anterior">⏮️</button>
+                <button id="btnPlayPause" class="btn-transport btn-large" title="Reproducir/Pausar">▶️</button>
+                <button id="btnStop" class="btn-transport" title="Parar">⏹️</button>
+                <button id="btnNext" class="btn-transport" title="Siguiente">⏭️</button>
+            </div>
+            <p id="playlistInfo" class="playlist-info">Par 0 de 0</p>
+        </div>
+    </div>
+
+    <script>
+        // Datos de los pares exportados
+        const pares = [
+  {
+    "linea": 1,
+    "texto_es": "El perro está debajo de la cama.",
+    "texto_en": "The dog is under the bed.",
+    "archivo_es": "audio_001_el_perro_esta_debajo_de_la_cama_es.mp3",
+    "archivo_en": "audio_001_el_perro_esta_debajo_de_la_cama_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 2,
+    "texto_es": "Las llaves están dentro del bolso.",
+    "texto_en": "The keys are inside the bag.",
+    "archivo_es": "audio_002_las_llaves_estan_dentro_del_bolso_es.mp3",
+    "archivo_en": "audio_002_las_llaves_estan_dentro_del_bolso_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 3,
+    "texto_es": "El carro está fuera de la casa.",
+    "texto_en": "The car is outside the house.",
+    "archivo_es": "audio_003_el_carro_esta_fuera_de_la_casa_es.mp3",
+    "archivo_en": "audio_003_el_carro_esta_fuera_de_la_casa_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 4,
+    "texto_es": "Ella está sentada al lado de mí.",
+    "texto_en": "She is sitting next to me.",
+    "archivo_es": "audio_004_ella_esta_sentada_al_lado_de_mi_es.mp3",
+    "archivo_en": "audio_004_ella_esta_sentada_al_lado_de_mi_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 5,
+    "texto_es": "El gato está detrás de la puerta.",
+    "texto_en": "The cat is behind the door.",
+    "archivo_es": "audio_005_el_gato_esta_detras_de_la_puerta_es.mp3",
+    "archivo_en": "audio_005_el_gato_esta_detras_de_la_puerta_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 6,
+    "texto_es": "El parque está enfrente de la escuela.",
+    "texto_en": "The park is in front of the school.",
+    "archivo_es": "audio_006_el_parque_esta_enfrente_de_la_escuela_es.mp3",
+    "archivo_en": "audio_006_el_parque_esta_enfrente_de_la_escuela_en.mp3",
+    "pausa_ms": 1500
+  },
+  {
+    "linea": 7,
+    "texto_es": "El cuadro está arriba del sofá.",
+    "texto_en": "The picture is above the sofa.",
+    "archivo_es": "audio_007_el_cuadro_esta_arriba_del_sofa_es.mp3",
+    "archivo_en": "audio_007_el_cuadro_esta_arriba_del_sofa_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 8,
+    "texto_es": "La pelota está abajo de las escaleras.",
+    "texto_en": "The ball is below the stairs.",
+    "archivo_es": "audio_008_la_pelota_esta_abajo_de_las_escaleras_es.mp3",
+    "archivo_en": "audio_008_la_pelota_esta_abajo_de_las_escaleras_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 9,
+    "texto_es": "El banco está entre la tienda y el hotel.",
+    "texto_en": "The bank is between the shop and the hotel.",
+    "archivo_es": "audio_009_el_banco_esta_entre_la_tienda_y_el_hotel_es.mp3",
+    "archivo_en": "audio_009_el_banco_esta_entre_la_tienda_y_el_hotel_en.mp3",
+    "pausa_ms": 1650
+  },
+  {
+    "linea": 10,
+    "texto_es": "Mi teléfono está aquí.",
+    "texto_en": "My phone is here.",
+    "archivo_es": "audio_010_mi_telefono_esta_aqui_es.mp3",
+    "archivo_en": "audio_010_mi_telefono_esta_aqui_en.mp3",
+    "pausa_ms": 900
+  },
+  {
+    "linea": 11,
+    "texto_es": "Tu mochila está allá.",
+    "texto_en": "Your backpack is there.",
+    "archivo_es": "audio_011_tu_mochila_esta_alla_es.mp3",
+    "archivo_en": "audio_011_tu_mochila_esta_alla_en.mp3",
+    "pausa_ms": 900
+  },
+  {
+    "linea": 12,
+    "texto_es": "El baño está a la derecha.",
+    "texto_en": "The bathroom is on the right.",
+    "archivo_es": "audio_012_el_bano_esta_a_la_derecha_es.mp3",
+    "archivo_en": "audio_012_el_bano_esta_a_la_derecha_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 13,
+    "texto_es": "La cocina está a la izquierda.",
+    "texto_en": "The kitchen is on the left.",
+    "archivo_es": "audio_013_la_cocina_esta_a_la_izquierda_es.mp3",
+    "archivo_en": "audio_013_la_cocina_esta_a_la_izquierda_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 14,
+    "texto_es": "El hospital está cerca.",
+    "texto_en": "The hospital is nearby.",
+    "archivo_es": "audio_014_el_hospital_esta_cerca_es.mp3",
+    "archivo_en": "audio_014_el_hospital_esta_cerca_en.mp3",
+    "pausa_ms": 900
+  },
+  {
+    "linea": 15,
+    "texto_es": "La playa está lejos.",
+    "texto_en": "The beach is far away.",
+    "archivo_es": "audio_015_la_playa_esta_lejos_es.mp3",
+    "archivo_en": "audio_015_la_playa_esta_lejos_en.mp3",
+    "pausa_ms": 1050
+  },
+  {
+    "linea": 16,
+    "texto_es": "El café está junto a la librería.",
+    "texto_en": "The cafe is next to the bookstore.",
+    "archivo_es": "audio_016_el_cafe_esta_junto_a_la_libreria_es.mp3",
+    "archivo_en": "audio_016_el_cafe_esta_junto_a_la_libreria_en.mp3",
+    "pausa_ms": 1350
+  },
+  {
+    "linea": 17,
+    "texto_es": "El espejo está colgado arriba.",
+    "texto_en": "The mirror is hanging up.",
+    "archivo_es": "audio_017_el_espejo_esta_colgado_arriba_es.mp3",
+    "archivo_en": "audio_017_el_espejo_esta_colgado_arriba_en.mp3",
+    "pausa_ms": 1050
+  },
+  {
+    "linea": 18,
+    "texto_es": "Los zapatos están abajo.",
+    "texto_en": "The shoes are downstairs.",
+    "archivo_es": "audio_018_los_zapatos_estan_abajo_es.mp3",
+    "archivo_en": "audio_018_los_zapatos_estan_abajo_en.mp3",
+    "pausa_ms": 900
+  },
+  {
+    "linea": 19,
+    "texto_es": "Estamos dentro del edificio.",
+    "texto_en": "We are inside the building.",
+    "archivo_es": "audio_019_estamos_dentro_del_edificio_es.mp3",
+    "archivo_en": "audio_019_estamos_dentro_del_edificio_en.mp3",
+    "pausa_ms": 1050
+  },
+  {
+    "linea": 20,
+    "texto_es": "Ellos están fuera de la oficina.",
+    "texto_en": "They are outside the office.",
+    "archivo_es": "audio_020_ellos_estan_fuera_de_la_oficina_es.mp3",
+    "archivo_en": "audio_020_ellos_estan_fuera_de_la_oficina_en.mp3",
+    "pausa_ms": 1050
+  },
+  {
+    "linea": 21,
+    "texto_es": "El lápiz está junto al cuaderno.",
+    "texto_en": "The pencil is beside the notebook.",
+    "archivo_es": "audio_021_el_lapiz_esta_junto_al_cuaderno_es.mp3",
+    "archivo_en": "audio_021_el_lapiz_esta_junto_al_cuaderno_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 22,
+    "texto_es": "Camina hacia adelante.",
+    "texto_en": "Walk forward.",
+    "archivo_es": "audio_022_camina_hacia_adelante_es.mp3",
+    "archivo_en": "audio_022_camina_hacia_adelante_en.mp3",
+    "pausa_ms": 800
+  },
+  {
+    "linea": 23,
+    "texto_es": "Da un paso atrás.",
+    "texto_en": "Take a step back.",
+    "archivo_es": "audio_023_da_un_paso_atras_es.mp3",
+    "archivo_en": "audio_023_da_un_paso_atras_en.mp3",
+    "pausa_ms": 900
+  },
+  {
+    "linea": 24,
+    "texto_es": "El norte está hacia arriba.",
+    "texto_en": "North is upwards.",
+    "archivo_es": "audio_024_el_norte_esta_hacia_arriba_es.mp3",
+    "archivo_en": "audio_024_el_norte_esta_hacia_arriba_en.mp3",
+    "pausa_ms": 800
+  },
+  {
+    "linea": 25,
+    "texto_es": "El sur está hacia abajo.",
+    "texto_en": "South is downwards.",
+    "archivo_es": "audio_025_el_sur_esta_hacia_abajo_es.mp3",
+    "archivo_en": "audio_025_el_sur_esta_hacia_abajo_en.mp3",
+    "pausa_ms": 800
+  },
+  {
+    "linea": 26,
+    "texto_es": "El jardín está detrás de la casa.",
+    "texto_en": "The garden is behind the house.",
+    "archivo_es": "audio_026_el_jardin_esta_detras_de_la_casa_es.mp3",
+    "archivo_en": "audio_026_el_jardin_esta_detras_de_la_casa_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 27,
+    "texto_es": "La parada de autobús está enfrente.",
+    "texto_en": "The bus stop is opposite.",
+    "archivo_es": "audio_027_la_parada_de_autobus_esta_enfrente_es.mp3",
+    "archivo_en": "audio_027_la_parada_de_autobus_esta_enfrente_en.mp3",
+    "pausa_ms": 1050
+  },
+  {
+    "linea": 28,
+    "texto_es": "El control remoto está sobre el sillón.",
+    "texto_en": "The remote is on the armchair.",
+    "archivo_es": "audio_028_el_control_remoto_esta_sobre_el_sillon_es.mp3",
+    "archivo_en": "audio_028_el_control_remoto_esta_sobre_el_sillon_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 29,
+    "texto_es": "Hay un túnel debajo del río.",
+    "texto_en": "There is a tunnel under the river.",
+    "archivo_es": "audio_029_hay_un_tunel_debajo_del_rio_es.mp3",
+    "archivo_en": "audio_029_hay_un_tunel_debajo_del_rio_en.mp3",
+    "pausa_ms": 1350
+  },
+  {
+    "linea": 30,
+    "texto_es": "Guarda el dinero dentro de la caja.",
+    "texto_en": "Keep the money inside the box.",
+    "archivo_es": "audio_030_guarda_el_dinero_dentro_de_la_caja_es.mp3",
+    "archivo_en": "audio_030_guarda_el_dinero_dentro_de_la_caja_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 31,
+    "texto_es": "El juguete está fuera de la caja.",
+    "texto_en": "The toy is out of the box.",
+    "archivo_es": "audio_031_el_juguete_esta_fuera_de_la_caja_es.mp3",
+    "archivo_en": "audio_031_el_juguete_esta_fuera_de_la_caja_en.mp3",
+    "pausa_ms": 1350
+  },
+  {
+    "linea": 32,
+    "texto_es": "Siéntate junto a tu hermano.",
+    "texto_en": "Sit beside your brother.",
+    "archivo_es": "audio_032_sientate_junto_a_tu_hermano_es.mp3",
+    "archivo_en": "audio_032_sientate_junto_a_tu_hermano_en.mp3",
+    "pausa_ms": 900
+  },
+  {
+    "linea": 33,
+    "texto_es": "El árbol está detrás del auto.",
+    "texto_en": "The tree is behind the car.",
+    "archivo_es": "audio_033_el_arbol_esta_detras_del_auto_es.mp3",
+    "archivo_en": "audio_033_el_arbol_esta_detras_del_auto_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 34,
+    "texto_es": "La televisión está frente a nosotros.",
+    "texto_en": "The TV is in front of us.",
+    "archivo_es": "audio_034_la_television_esta_frente_a_nosotros_es.mp3",
+    "archivo_en": "audio_034_la_television_esta_frente_a_nosotros_en.mp3",
+    "pausa_ms": 1350
+  },
+  {
+    "linea": 35,
+    "texto_es": "El avión vuela arriba de las nubes.",
+    "texto_en": "The plane flies above the clouds.",
+    "archivo_es": "audio_035_el_avion_vuela_arriba_de_las_nubes_es.mp3",
+    "archivo_en": "audio_035_el_avion_vuela_arriba_de_las_nubes_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 36,
+    "texto_es": "La temperatura está bajo cero.",
+    "texto_en": "The temperature is below zero.",
+    "archivo_es": "audio_036_la_temperatura_esta_bajo_cero_es.mp3",
+    "archivo_en": "audio_036_la_temperatura_esta_bajo_cero_en.mp3",
+    "pausa_ms": 1050
+  },
+  {
+    "linea": 37,
+    "texto_es": "El color gris está entre el blanco y el negro.",
+    "texto_en": "Grey is between white and black.",
+    "archivo_es": "audio_037_el_color_gris_esta_entre_el_blanco_y_el_negro_es.mp3",
+    "archivo_en": "audio_037_el_color_gris_esta_entre_el_blanco_y_el_negro_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 38,
+    "texto_es": "Ven aquí, por favor.",
+    "texto_en": "Come here, please.",
+    "archivo_es": "audio_038_ven_aqui_por_favor_es.mp3",
+    "archivo_en": "audio_038_ven_aqui_por_favor_en.mp3",
+    "pausa_ms": 800
+  },
+  {
+    "linea": 39,
+    "texto_es": "Quédate allá.",
+    "texto_en": "Stay there.",
+    "archivo_es": "audio_039_quedate_alla_es.mp3",
+    "archivo_en": "audio_039_quedate_alla_en.mp3",
+    "pausa_ms": 800
+  },
+  {
+    "linea": 40,
+    "texto_es": "Gira a la derecha.",
+    "texto_en": "Turn right.",
+    "archivo_es": "audio_040_gira_a_la_derecha_es.mp3",
+    "archivo_en": "audio_040_gira_a_la_derecha_en.mp3",
+    "pausa_ms": 800
+  },
+  {
+    "linea": 41,
+    "texto_es": "Gira a la izquierda.",
+    "texto_en": "Turn left.",
+    "archivo_es": "audio_041_gira_a_la_izquierda_es.mp3",
+    "archivo_en": "audio_041_gira_a_la_izquierda_en.mp3",
+    "pausa_ms": 800
+  },
+  {
+    "linea": 42,
+    "texto_es": "La farmacia está muy cerca.",
+    "texto_en": "The pharmacy is very close.",
+    "archivo_es": "audio_042_la_farmacia_esta_muy_cerca_es.mp3",
+    "archivo_en": "audio_042_la_farmacia_esta_muy_cerca_en.mp3",
+    "pausa_ms": 1050
+  },
+  {
+    "linea": 43,
+    "texto_es": "La ciudad está lejos de aquí.",
+    "texto_en": "The city is far from here.",
+    "archivo_es": "audio_043_la_ciudad_esta_lejos_de_aqui_es.mp3",
+    "archivo_en": "audio_043_la_ciudad_esta_lejos_de_aqui_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 44,
+    "texto_es": "El gato saltó sobre la mesa.",
+    "texto_en": "The cat jumped onto the table.",
+    "archivo_es": "audio_044_el_gato_salto_sobre_la_mesa_es.mp3",
+    "archivo_en": "audio_044_el_gato_salto_sobre_la_mesa_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 45,
+    "texto_es": "El papel cayó debajo de la mesa.",
+    "texto_en": "The paper fell under the table.",
+    "archivo_es": "audio_045_el_papel_cayo_debajo_de_la_mesa_es.mp3",
+    "archivo_en": "audio_045_el_papel_cayo_debajo_de_la_mesa_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 46,
+    "texto_es": "Hay agua dentro del vaso.",
+    "texto_en": "There is water inside the glass.",
+    "archivo_es": "audio_046_hay_agua_dentro_del_vaso_es.mp3",
+    "archivo_en": "audio_046_hay_agua_dentro_del_vaso_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 47,
+    "texto_es": "El perro corre afuera.",
+    "texto_en": "The dog is running outside.",
+    "archivo_es": "audio_047_el_perro_corre_afuera_es.mp3",
+    "archivo_en": "audio_047_el_perro_corre_afuera_en.mp3",
+    "pausa_ms": 1050
+  },
+  {
+    "linea": 48,
+    "texto_es": "Mi casa está junto a la tuya.",
+    "texto_en": "My house is next to yours.",
+    "archivo_es": "audio_048_mi_casa_esta_junto_a_la_tuya_es.mp3",
+    "archivo_en": "audio_048_mi_casa_esta_junto_a_la_tuya_en.mp3",
+    "pausa_ms": 1200
+  },
+  {
+    "linea": 49,
+    "texto_es": "El sol se oculta detrás de la montaña.",
+    "texto_en": "The sun hides behind the mountain.",
+    "archivo_es": "audio_049_el_sol_se_oculta_detras_de_la_montana_es.mp3",
+    "archivo_en": "audio_049_el_sol_se_oculta_detras_de_la_montana_en.mp3",
+    "pausa_ms": 1200
+  }
+];
+
+        // ── Estado del reproductor ──
+        let currentIndex = -1;
+        let isPlaying = false;
+        let isPaused = false;
+        let phase = 'stopped';   // 'stopped', 'es', 'pause', 'en', 'done'
+        let audioElement = null;
+        let pauseTimeout = null;
+        let audioErrorHandler = null;
+
+        // ── Elementos DOM ──
+        const fileListContainer = document.getElementById('fileListContainer');
+        const playerArea = document.getElementById('playerArea');
+        const btnPlayAll = document.getElementById('btnPlayAll');
+        const nowPlaying = document.getElementById('nowPlaying');
+        const phaseEs = document.getElementById('phaseEs');
+        const phasePause = document.getElementById('phasePause');
+        const phaseEn = document.getElementById('phaseEn');
+        const phaseDone = document.getElementById('phaseDone');
+        const pauseCountdown = document.getElementById('pauseCountdown');
+        const playbackProgress = document.getElementById('playbackProgress');
+        const currentTimeSpan = document.getElementById('currentTime');
+        const totalTimeSpan = document.getElementById('totalTime');
+        const btnPrev = document.getElementById('btnPrev');
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const btnStop = document.getElementById('btnStop');
+        const btnNext = document.getElementById('btnNext');
+        const playlistInfo = document.getElementById('playlistInfo');
+
+        // ── Utilidades ──
+        function formatTime(seconds) {
+            if (isNaN(seconds) || seconds < 0) return '00:00';
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function ocultarTodasLasFases() {
+            phaseEs.classList.add('hidden');
+            phasePause.classList.add('hidden');
+            phaseEn.classList.add('hidden');
+            phaseDone.classList.add('hidden');
+        }
+
+        function mostrarFase(fase) {
+            ocultarTodasLasFases();
+            if (fase === 'es') phaseEs.classList.remove('hidden');
+            else if (fase === 'pause') phasePause.classList.remove('hidden');
+            else if (fase === 'en') phaseEn.classList.remove('hidden');
+            else if (fase === 'done') phaseDone.classList.remove('hidden');
+            phase = fase;
+        }
+
+        function obtenerParActual() {
+            if (currentIndex >= 0 && currentIndex < pares.length) {
+                return pares[currentIndex];
+            }
+            return null;
+        }
+
+        // ── Mostrar lista ──
+        function mostrarLista() {
+            let html = '';
+            if (pares.length > 0) {
+                html += `<div class="pair-header">Pares Español ↔ Inglés:</div>`;
+                pares.forEach((p, i) => {
+                    html += `<div class="file-item file-pair" data-index="${i}">
+                        <span class="pair-num">${i + 1}.</span>
+                        <span class="pair-es">🇪🇸 ${escapeHtml(p.texto_es)} <small>(${p.archivo_es})</small></span>
+                        <span class="pair-arrow">→</span>
+                        <span class="pair-en">🇬🇧 ${escapeHtml(p.texto_en)} <small>(${p.archivo_en})</small></span>
+                        <span class="pair-pause">⏸️ ${p.pausa_ms}ms</span>
+                    </div>`;
+                });
+            }
+
+            if (!html) {
+                html = '<p class="empty-msg">No hay pares para reproducir.</p>';
+                btnPlayAll.disabled = true;
+            }
+
+            fileListContainer.innerHTML = html;
+
+            fileListContainer.querySelectorAll('.file-pair').forEach(el => {
+                el.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.index);
+                    reproducirParDesde(idx);
+                });
+            });
+        }
+
+        // ── Reproducir par desde índice ──
+        function reproducirParDesde(idx) {
+            if (idx < 0 || idx >= pares.length) return;
+            currentIndex = idx;
+            limpiarAudio();
+            if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
+            playerArea.classList.remove('hidden');
+            reproducirFaseEs();
+        }
+
+        // ── Reproducir fase ES ──
+        function reproducirFaseEs() {
+            const par = obtenerParActual();
+            if (!par || !par.archivo_es) {
+                if (par && par.archivo_en) { reproducirFaseEn(); return; }
+                avanzarAlSiguiente();
+                return;
+            }
+
+            mostrarFase('es');
+            const url = par.archivo_es;
+            prepararAudio(url, function() {
+                mostrarFase('pause');
+                iniciarPausa();
+            });
+            nowPlaying.textContent = `🇪🇸 ${par.texto_es}`;
+            playlistInfo.textContent = `Par ${currentIndex + 1} de ${pares.length}`;
+            actualizarResaltado();
+        }
+
+        // ── Reproducir fase EN ──
+        function reproducirFaseEn() {
+            const par = obtenerParActual();
+            if (!par || !par.archivo_en) {
+                avanzarAlSiguiente();
+                return;
+            }
+
+            mostrarFase('en');
+            const url = par.archivo_en;
+            prepararAudio(url, function() {
+                mostrarFase('done');
+                setTimeout(function() { avanzarAlSiguiente(); }, 800);
+            });
+            nowPlaying.textContent = `🇬🇧 ${par.texto_en}`;
+        }
+
+        // ── Preparar y reproducir un audio ──
+        function prepararAudio(url, onEndedCallback) {
+            limpiarAudio();
+
+            audioElement = new Audio(url);
+            audioElement.preload = 'auto';
+
+            audioElement.addEventListener('loadedmetadata', function() {
+                totalTimeSpan.textContent = formatTime(audioElement.duration);
+                playbackProgress.style.width = '0%';
+                currentTimeSpan.textContent = '00:00';
+            });
+
+            audioElement.addEventListener('timeupdate', function() {
+                if (audioElement.duration) {
+                    const pct = (audioElement.currentTime / audioElement.duration) * 100;
+                    playbackProgress.style.width = pct + '%';
+                    currentTimeSpan.textContent = formatTime(audioElement.currentTime);
+                }
+            });
+
+            audioElement.addEventListener('ended', function() {
+                if (onEndedCallback) onEndedCallback();
+            });
+
+            audioErrorHandler = function() {
+                console.error('Error al reproducir audio');
+                if (onEndedCallback) onEndedCallback();
+            };
+            audioElement.addEventListener('error', audioErrorHandler);
+
+            audioElement.play().then(() => {
+                isPlaying = true;
+                isPaused = false;
+                btnPlayPause.textContent = '⏸️';
+            }).catch(function(err) {
+                console.error('No se pudo iniciar la reproducción:', err);
+                if (onEndedCallback) onEndedCallback();
+            });
+        }
+
+        // ── Iniciar pausa calculada ──
+        function iniciarPausa() {
+            const par = obtenerParActual();
+            if (!par) return;
+
+            const pausaMs = par.pausa_ms;
+            pauseCountdown.textContent = pausaMs;
+
+            const startTime = Date.now();
+            pauseTimeout = setInterval(function() {
+                const elapsed = Date.now() - startTime;
+                const remaining = Math.max(0, pausaMs - elapsed);
+                pauseCountdown.textContent = remaining;
+                const pct = Math.min((elapsed / pausaMs) * 100, 100);
+                playbackProgress.style.width = pct + '%';
+                currentTimeSpan.textContent = formatTime(elapsed / 1000);
+
+                if (remaining <= 0) {
+                    clearInterval(pauseTimeout);
+                    pauseTimeout = null;
+                    reproducirFaseEn();
+                }
+            }, 50);
+            totalTimeSpan.textContent = formatTime(pausaMs / 1000);
+        }
+
+        // ── Avanzar al siguiente par ──
+        function avanzarAlSiguiente() {
+            if (currentIndex < pares.length - 1) {
+                const nextIdx = currentIndex + 1;
+                if (nextIdx < pares.length) {
+                    reproducirParDesde(nextIdx);
+                }
+            } else {
+                isPlaying = false;
+                isPaused = false;
+                btnPlayPause.textContent = '▶️';
+                nowPlaying.textContent = '🎉 Reproducción finalizada';
+                mostrarFase('done');
+                document.getElementById('phaseDone').textContent = '✅ ¡Lista completa!';
+                playbackProgress.style.width = '100%';
+                currentTimeSpan.textContent = '00:00';
+                totalTimeSpan.textContent = '00:00';
+                actualizarResaltado();
+            }
+        }
+
+        // ── Limpiar solo el audio ──
+        function limpiarAudio() {
+            if (audioElement) {
+                if (audioErrorHandler) {
+                    audioElement.removeEventListener('error', audioErrorHandler);
+                    audioErrorHandler = null;
+                }
+                audioElement.pause();
+                audioElement.src = '';
+                audioElement.load();
+                audioElement = null;
+            }
+        }
+
+        // ── Detener reproducción ──
+        function detenerReproduccion() {
+            limpiarAudio();
+            isPlaying = false;
+            isPaused = false;
+            btnPlayPause.textContent = '▶️';
+            playbackProgress.style.width = '0%';
+            currentTimeSpan.textContent = '00:00';
+            totalTimeSpan.textContent = '00:00';
+        }
+
+        // ── Actualizar resaltado ──
+        function actualizarResaltado() {
+            fileListContainer.querySelectorAll('.file-item').forEach(el => {
+                el.classList.remove('active');
+                if (parseInt(el.dataset.index) === currentIndex) {
+                    el.classList.add('active');
+                    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            });
+        }
+
+        // ── Eventos de botones ──
+        btnPlayAll.addEventListener('click', function() {
+            if (pares.length > 0) {
+                reproducirParDesde(0);
+            }
+        });
+
+        btnPlayPause.addEventListener('click', function() {
+            if (phase === 'pause') {
+                if (isPaused) {
+                    isPaused = false;
+                    btnPlayPause.textContent = '⏸️';
+                    const par = obtenerParActual();
+                    if (par && pauseTimeout) {
+                        const remaining = parseInt(pauseCountdown.textContent);
+                        const startTime = Date.now();
+                        pauseTimeout = setInterval(function() {
+                            const elapsed = Date.now() - startTime;
+                            const r = Math.max(0, remaining - elapsed);
+                            pauseCountdown.textContent = r;
+                            const pct = Math.min(((remaining - r) / par.pausa_ms) * 100, 100);
+                            playbackProgress.style.width = pct + '%';
+                            if (r <= 0) {
+                                clearInterval(pauseTimeout);
+                                pauseTimeout = null;
+                                reproducirFaseEn();
+                            }
+                        }, 50);
+                    }
+                } else {
+                    isPaused = true;
+                    btnPlayPause.textContent = '▶️';
+                    if (pauseTimeout) {
+                        clearInterval(pauseTimeout);
+                        pauseTimeout = null;
+                    }
+                }
+                return;
+            }
+
+            if (!audioElement) return;
+
+            if (isPlaying && !isPaused) {
+                audioElement.pause();
+                isPaused = true;
+                btnPlayPause.textContent = '▶️';
+            } else if (isPaused) {
+                audioElement.play().then(() => {
+                    isPaused = false;
+                    isPlaying = true;
+                    btnPlayPause.textContent = '⏸️';
+                }).catch(function(err) {
+                    console.error('Error al reanudar:', err);
+                });
+            }
+        });
+
+        btnStop.addEventListener('click', function() {
+            if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
+            detenerReproduccion();
+            ocultarTodasLasFases();
+            phase = 'stopped';
+            nowPlaying.textContent = 'Reproducción detenida';
+            playlistInfo.textContent = '';
+            phaseEs.textContent = '🇪🇸 Escuchando español...';
+            actualizarResaltado();
+        });
+
+        btnNext.addEventListener('click', function() {
+            if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
+            limpiarAudio();
+            avanzarAlSiguiente();
+        });
+
+        btnPrev.addEventListener('click', function() {
+            if (currentIndex > 0) {
+                if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
+                limpiarAudio();
+                const prevIdx = currentIndex - 1;
+                if (prevIdx < pares.length) {
+                    reproducirParDesde(prevIdx);
+                }
+            }
+        });
+
+        // ── Inicializar ──
+        mostrarLista();
+    </script>
+</body>
+</html>
