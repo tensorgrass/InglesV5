@@ -142,7 +142,7 @@ async def generar_audios_desde_csv(csv_path, output_dir, progreso_callback=None)
     errores = []
 
     with open(csv_path, mode='r', encoding='utf-8') as f:
-        reader = csv.reader(f)
+        reader = csv.reader(f, delimiter=';')
         header = next(reader, None)
 
         for index, row in enumerate(reader):
