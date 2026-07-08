@@ -51,6 +51,7 @@
                 <span id="phasePause" class="phase-phase hidden">⏸️ Pausa de <span id="pauseCountdown">0</span>ms...</span>
                 <span id="phaseEn" class="phase-phase hidden">🇬🇧 Repitiendo en inglés...</span>
                 <span id="phaseDone" class="phase-phase phase-done hidden">✅ ¡Completado!</span>
+                <div id="englishTextDisplay" class="english-text hidden"></div>
             </div>
             <div class="progress-bar-container">
                 <div class="progress-bar" id="playbackProgress"></div>
@@ -116,6 +117,7 @@
         const btnStop = document.getElementById('btnStop');
         const btnNext = document.getElementById('btnNext');
         const playlistInfo = document.getElementById('playlistInfo');
+        const englishTextDisplay = document.getElementById('englishTextDisplay');
 
         // ── Utilidades ──
         function formatTime(seconds) {
@@ -137,14 +139,22 @@
             phasePause.classList.add('hidden');
             phaseEn.classList.add('hidden');
             phaseDone.classList.add('hidden');
+            // No ocultamos englishTextDisplay para que la frase en inglés
+            // de la pareja anterior permanezca visible
         }
 
-        function mostrarFase(fase) {
+        function mostrarFase(fase, textoEn) {
             ocultarTodasLasFases();
             if (fase === 'es') phaseEs.classList.remove('hidden');
             else if (fase === 'pause') phasePause.classList.remove('hidden');
             else if (fase === 'en') phaseEn.classList.remove('hidden');
-            else if (fase === 'done') phaseDone.classList.remove('hidden');
+            else if (fase === 'done') {
+                phaseDone.classList.remove('hidden');
+                if (textoEn) {
+                    englishTextDisplay.textContent = '📝 ' + textoEn;
+                    englishTextDisplay.classList.remove('hidden');
+                }
+            }
             phase = fase;
         }
 
@@ -277,6 +287,7 @@
             limpiarAudio();
             if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
             playerArea.classList.remove('hidden');
+            englishTextDisplay.classList.add('hidden');
             reproducirFaseEs();
         }
 
@@ -311,8 +322,8 @@
             mostrarFase('en');
             const url = `/servir_audio?archivo=${encodeURIComponent(par.en.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`;
             prepararAudio(url, function() {
-                mostrarFase('done');
-                setTimeout(function() { avanzarAlSiguiente(); }, 800);
+                mostrarFase('done', par.en.texto || '');
+                avanzarAlSiguiente();
             });
             nowPlaying.textContent = `🇬🇧 ${par.clave}`;
         }
@@ -390,7 +401,12 @@
             if (currentIndex < totalItems - 1) {
                 const nextIdx = currentIndex + 1;
                 if (nextIdx < pares.length) {
-                    reproducirParDesde(nextIdx);
+                    currentIndex = nextIdx;
+                    limpiarAudio();
+                    if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
+                    playerArea.classList.remove('hidden');
+                    // No ocultamos englishTextDisplay para que la frase anterior siga visible
+                    reproducirFaseEs();
                 } else {
                     currentIndex = nextIdx;
                     limpiarAudio();
@@ -543,6 +559,7 @@
             if (pauseTimeout) { clearInterval(pauseTimeout); pauseTimeout = null; }
             detenerReproduccion();
             ocultarTodasLasFases();
+            englishTextDisplay.classList.add('hidden');
             phase = 'stopped';
             nowPlaying.textContent = 'Reproducción detenida';
             playlistInfo.textContent = '';
