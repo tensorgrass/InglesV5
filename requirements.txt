@@ -3,4 +3,6 @@
 
 edge-tts>=7.0.0
 Flask>=3.0.0
+gunicorn>=21.2.0
 mutagen>=1.47.0
+werkzeug>=3.0.0
