@@ -1478,4 +1478,6 @@ def audio_static(filename):
 if __name__ == '__main__':
     # Asegurar que existe el directorio base de audio
     os.makedirs(app.config['AUDIO_BASE'], exist_ok=True)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Usar el puerto asignado por Back4App ($PORT) o 5000 por defecto
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)

@@ -1,0 +1,45 @@
+# ── Git ─────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+
+# ── Python ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# ── IDE / Editor ────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Proyecto ────────────────────────────────────────────────
+*.code-workspace
+promps_log.txt
+README.md
+LICENSE
+agents.md
+
+# ── Base de datos local (SQLite) ────────────────────────────
+# No copiar la DB local; se creará una nueva en producción
+database.db
+
+# ── Audios locales (se generarán en producción) ─────────────
+static/audio/*.mp3
+static/audio/**/*.mp3
+
+# ── Docker ──────────────────────────────────────────────────
+Dockerfile
+.dockerignore
