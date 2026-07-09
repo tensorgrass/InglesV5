@@ -168,9 +168,11 @@ Función diseñada para ejecutarse en un hilo:
 | `/temas` | GET | Página de gestión de temas |
 | `/api/temas` | GET | Lista todos los temas con metadatos |
 | `/api/temas/<int:tema_id>` | GET | Obtiene un tema con sus pares de audio |
-| `/api/temas` | POST | Crea un nuevo tema |
-| `/api/temas/<int:tema_id>` | PUT | Actualiza nombre/descripción de un tema |
+| `/api/temas` | POST | Crea un nuevo tema (nombre + descripción) |
+| `/api/temas/<int:tema_id>` | PUT | Actualiza nombre y descripción de un tema |
 | `/api/temas/<int:tema_id>` | DELETE | Elimina un tema y sus archivos de audio |
+
+**Frontend (temas.html):** Al editar un tema, se muestran dos prompts consecutivos (nombre y descripción). Si ambos se cancelan o no hay cambios, no se envía la petición PUT. La descripción se muestra en cursiva debajo del nombre en la lista de temas.
 
 #### 5.3 Generación de audios (`routes/generar.py`)
 

@@ -25,19 +25,23 @@
         <div id="temasContainer"></div>
     </div>
     <script>
+        var temasData = {};  // Almacena datos de temas por ID
+
         async function cargarTemas() {
             const c = document.getElementById('temasContainer');
             try {
                 const r = await fetch('/api/temas');
-                const t = await r.json();
-                if (t.length === 0) { c.innerHTML = '<div class="card"><p class="empty-msg">No hay temas.</p></div>'; return; }
-                c.innerHTML = t.map(tm => temaHtml(tm)).join('');
+                const lista = await r.json();
+                if (lista.length === 0) { c.innerHTML = '<div class="card"><p class="empty-msg">No hay temas.</p></div>'; return; }
+                temasData = {};
+                lista.forEach(function(tm) { temasData[tm.id] = tm; });
+                c.innerHTML = lista.map(tm => temaHtml(tm)).join('');
             } catch (e) { c.innerHTML = '<div class="card"><div class="result-error">Error: ' + e.message + '</div></div>'; }
         }
         function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         function temaHtml(t) {
             var desc = t.description ? '<p class="tema-desc">' + esc(t.description) + '</p>' : '';
-            return '<div class="card tema-card" data-id="' + t.id + '"><div class="tema-header"><div class="tema-info"><h3 class="tema-name">' + esc(t.name) + '</h3>' + desc + '<p class="tema-meta">' + t.total_pares + ' pares</p></div><div class="tema-actions"><button class="btn-small btn-edit" onclick="editarTema(' + t.id + ',\'' + esc(t.name) + '\',\'' + esc(t.description || '') + '\')">✏️</button><button class="btn-small btn-delete" onclick="eliminarTema(' + t.id + ')">🗑️</button></div></div></div>';
+            return '<div class="card tema-card" data-id="' + t.id + '"><div class="tema-header"><div class="tema-info"><h3 class="tema-name">' + esc(t.name) + '</h3>' + desc + '<p class="tema-meta">' + t.total_pares + ' pares</p></div><div class="tema-actions"><button class="btn-small btn-edit" data-id="' + t.id + '">✏️</button><button class="btn-small btn-delete" data-id="' + t.id + '">🗑️</button></div></div></div>';
         }
         document.getElementById('btnCrearTema').addEventListener('click', async function() {
             const n = document.getElementById('newTemaName').value.trim();
@@ -49,15 +53,33 @@
                 if (res.id) { document.getElementById('newTemaName').value = ''; document.getElementById('newTemaDesc').value = ''; cargarTemas(); } else { alert('Error: ' + res.error); }
             } catch (e) { alert('Error: ' + e.message); }
         });
-        async function editarTema(id, n, descActual) {
-            const nn = prompt('Nuevo nombre:', n);
-            if (!nn || nn.trim() === n) return;
-            const nd = prompt('Nueva descripción:', descActual || '');
+        async function editarTema(id, nombreOriginal, descOriginal) {
+            // Prompt 1: nombre
+            const nuevoNombre = prompt('Nuevo nombre:', nombreOriginal);
+            if (nuevoNombre === null || nuevoNombre === undefined) return; // Cancelado
+
+            // Prompt 2: descripción (SIEMPRE se muestra después del nombre)
+            const nuevaDescripcion = prompt('Nueva descripción:', descOriginal || '');
+            if (nuevaDescripcion === null || nuevaDescripcion === undefined) return; // Cancelado
+
+            const nombreFinal = nuevoNombre.trim() || nombreOriginal;
+            const descFinal = (nuevaDescripcion || '').trim();
+
+            // Si no hay cambios en ninguno, no enviar
+            if (nombreFinal === nombreOriginal && descFinal === (descOriginal || '')) return;
+
             try {
-                const r = await fetch('/api/temas/' + id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name: nn.trim(), description: (nd || '').trim()}) });
+                const r = await fetch('/api/temas/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: nombreFinal, description: descFinal })
+                });
                 const d = await r.json();
-                if (d.success) cargarTemas(); else alert('Error: ' + d.error);
-            } catch (e) { alert('Error: ' + e.message); }
+                if (d.success) cargarTemas();
+                else alert('Error: ' + d.error);
+            } catch (e) {
+                alert('Error de conexión: ' + e.message);
+            }
         }
         async function eliminarTema(id) {
             if (!confirm('¿Eliminar tema y sus audios?')) return;
@@ -68,6 +90,21 @@
             } catch (e) { alert('Error: ' + e.message); }
         }
         document.getElementById('newTemaName').addEventListener('keypress', function(e) { if (e.key === 'Enter') document.getElementById('btnCrearTema').click(); });
+
+        // Delegación de eventos para botones de editar y eliminar
+        document.getElementById('temasContainer').addEventListener('click', function(e) {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const id = parseInt(btn.dataset.id);
+            if (isNaN(id)) return;
+            if (btn.classList.contains('btn-edit')) {
+                const tm = temasData[id];
+                if (tm) editarTema(id, tm.name, tm.description || '');
+            } else if (btn.classList.contains('btn-delete')) {
+                eliminarTema(id);
+            }
+        });
+
         cargarTemas();
     </script>
     <style>
