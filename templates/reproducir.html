@@ -20,7 +20,7 @@
                     <select id="tema_select" name="tema_id" required>
                         <option value="">-- Selecciona un tema --</option>
                         {% for tema in temas %}
-                        <option value="{{ tema.id }}">{{ tema.name }} ({{ tema.total_pares }} pares)</option>
+                        <option value="{{ tema.id }}">{{ tema.name }} — {{ tema.description | truncate(30, True, '...') }} ({{ tema.total_pares }} pares)</option>
                         {% endfor %}
                     </select>
                     <small class="form-hint">

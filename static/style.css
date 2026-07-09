@@ -147,11 +147,12 @@ header h1 {
     color: #444;
 }
 
+.form-group select,
 .form-group input[type="file"],
 .form-group input[type="text"],
 .form-group textarea {
     width: 100%;
-    padding: 0.7rem;
+    padding: 0.8rem;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
     font-size: 1rem;

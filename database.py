@@ -104,7 +104,7 @@ def listar_temas_db(app):
         FROM themes t
         LEFT JOIN audio_pairs ap ON ap.theme_id = t.id
         GROUP BY t.id
-        ORDER BY t.updated_at DESC
+        ORDER BY t.name ASC
     """).fetchall()
     conn.close()
     return temas
@@ -163,7 +163,7 @@ def listar_temas_con_pares(app):
         LEFT JOIN audio_pairs ap ON ap.theme_id = t.id
         GROUP BY t.id
         HAVING total_pares > 0
-        ORDER BY t.updated_at DESC
+        ORDER BY t.name ASC
     """).fetchall()
     conn.close()
     return temas

@@ -95,8 +95,8 @@ La base de datos almacena temas, pares de audio y archivos CSV subidos.
 |---------|-------------|
 | `crear_tema(app, nombre, descripcion)` | Crea o actualiza un tema |
 | `guardar_pares_en_bd(app, tema_id, resultados)` | Guarda resultados de generación |
-| `listar_temas_db(app)` | Lista temas con conteo de pares |
-| `listar_temas_con_pares(app)` | Lista solo temas que tienen pares |
+| `listar_temas_db(app)` | Lista temas con conteo de pares (orden alfabético por nombre) |
+| `listar_temas_con_pares(app)` | Lista solo temas que tienen pares (orden alfabético por nombre) |
 | `obtener_tema_db(app, tema_id)` | Tema + sus pares de audio |
 | `actualizar_tema_db(app, tema_id, nombre, descripcion)` | Actualiza nombre/descripción |
 | `eliminar_tema_db(app, tema_id)` | Elimina tema de la BD |
