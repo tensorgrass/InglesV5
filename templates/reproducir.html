@@ -167,6 +167,80 @@
 
         let currentDirectorios = {};  // Almacena el directorio del tema para servir audios
 
+        // ── Precargar todos los audios como Blob URLs ──
+        async function precargarAudios() {
+            const totalItems = pares.length + sueltos.length;
+            if (totalItems === 0) return;
+
+            loadingArea.classList.remove('hidden');
+            loadingArea.querySelector('.loading-text').textContent = `⏳ Precargando ${totalItems} audios...`;
+
+            const tareas = [];
+
+            // Precargar pares ES/EN
+            for (let i = 0; i < pares.length; i++) {
+                const p = pares[i];
+                if (p.es) {
+                    tareas.push(
+                        fetch(`/servir_audio?archivo=${encodeURIComponent(p.es.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`)
+                            .then(r => r.arrayBuffer())
+                            .then(buf => {
+                                const blob = new Blob([buf], { type: 'audio/mpeg' });
+                                p.es.blobUrl = URL.createObjectURL(blob);
+                            })
+                            .catch(() => { /* ignorar errores individuales */ })
+                    );
+                }
+                if (p.en) {
+                    tareas.push(
+                        fetch(`/servir_audio?archivo=${encodeURIComponent(p.en.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`)
+                            .then(r => r.arrayBuffer())
+                            .then(buf => {
+                                const blob = new Blob([buf], { type: 'audio/mpeg' });
+                                p.en.blobUrl = URL.createObjectURL(blob);
+                            })
+                            .catch(() => { /* ignorar errores individuales */ })
+                    );
+                }
+            }
+
+            // Precargar archivos sueltos
+            for (let i = 0; i < sueltos.length; i++) {
+                const s = sueltos[i];
+                tareas.push(
+                    fetch(`/servir_audio?archivo=${encodeURIComponent(s.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`)
+                        .then(r => r.arrayBuffer())
+                        .then(buf => {
+                            const blob = new Blob([buf], { type: 'audio/mpeg' });
+                            s.blobUrl = URL.createObjectURL(blob);
+                        })
+                        .catch(() => { /* ignorar errores individuales */ })
+                );
+            }
+
+            // Esperar a que terminen todas, con un límite de concurrencia
+            const CONCURRENCIA = 6;
+            for (let i = 0; i < tareas.length; i += CONCURRENCIA) {
+                await Promise.allSettled(tareas.slice(i, i + CONCURRENCIA));
+                const completadas = Math.min(i + CONCURRENCIA, tareas.length);
+                loadingArea.querySelector('.loading-text').textContent =
+                    `⏳ Precargando ${completadas}/${tareas.length} audios...`;
+            }
+
+            loadingArea.classList.add('hidden');
+        }
+
+        // ── Liberar Blob URLs al cambiar de tema ──
+        function liberarBlobUrls() {
+            for (const p of pares) {
+                if (p.es && p.es.blobUrl) { URL.revokeObjectURL(p.es.blobUrl); p.es.blobUrl = null; }
+                if (p.en && p.en.blobUrl) { URL.revokeObjectURL(p.en.blobUrl); p.en.blobUrl = null; }
+            }
+            for (const s of sueltos) {
+                if (s.blobUrl) { URL.revokeObjectURL(s.blobUrl); s.blobUrl = null; }
+            }
+        }
+
         // ── Cargar lista de archivos ──
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -175,6 +249,7 @@
             if (!temaId) return;
 
             // Resetear estado
+            liberarBlobUrls();
             limpiarTodo();
             pares = [];
             sueltos = [];
@@ -187,6 +262,7 @@
             playerArea.classList.add('hidden');
             errorArea.classList.add('hidden');
             loadingArea.classList.remove('hidden');
+            loadingArea.querySelector('.loading-text').textContent = '⏳ Escaneando directorio...';
             btnCargar.disabled = true;
 
             try {
@@ -205,15 +281,18 @@
                         base: data.directorio
                     };
                     mostrarListaArchivos();
+                    // Iniciar precarga en segundo plano
+                    precargarAudios().catch(() => {});
                 } else {
                     errorContent.textContent = data.error;
                     errorArea.classList.remove('hidden');
+                    loadingArea.classList.add('hidden');
                 }
             } catch (err) {
                 errorContent.textContent = 'Error de conexión: ' + err.message;
                 errorArea.classList.remove('hidden');
-            } finally {
                 loadingArea.classList.add('hidden');
+            } finally {
                 btnCargar.disabled = false;
             }
         });
@@ -301,7 +380,7 @@
             }
 
             mostrarFase('es');
-            const url = `/servir_audio?archivo=${encodeURIComponent(par.es.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`;
+            const url = par.es.blobUrl || `/servir_audio?archivo=${encodeURIComponent(par.es.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`;
             prepararAudio(url, function() {
                 mostrarFase('pause');
                 iniciarPausa();
@@ -320,7 +399,7 @@
             }
 
             mostrarFase('en');
-            const url = `/servir_audio?archivo=${encodeURIComponent(par.en.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`;
+            const url = par.en.blobUrl || `/servir_audio?archivo=${encodeURIComponent(par.en.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`;
             prepararAudio(url, function() {
                 mostrarFase('done', par.en.texto || '');
                 avanzarAlSiguiente();
@@ -436,7 +515,7 @@
             mostrarFase('es');
             phaseEs.textContent = '🎵 Reproduciendo...';
 
-            const url = `/servir_audio?archivo=${encodeURIComponent(file.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`;
+            const url = file.blobUrl || `/servir_audio?archivo=${encodeURIComponent(file.nombre)}&directorio=${encodeURIComponent(currentDirectorios.base)}`;
             prepararAudio(url, function() {
                 mostrarFase('done');
                 setTimeout(function() { avanzarAlSiguiente(); }, 500);

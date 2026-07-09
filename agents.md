@@ -252,9 +252,40 @@ Flujo de reproducción secuencial:
 3. 🇬🇧 **Inglés** → se reproduce el audio en inglés.
 4. ✅ **Completado** → se avanza automáticamente al siguiente par.
 
+### 10. Precarga de audios en memoria (Blob URLs)
+
+Para evitar latencias de red en la reproducción secuencial, al cargar un tema se precargan **todos los audios en memoria** mediante Blob URLs.
+
+#### 10.1 Funcionamiento
+
+1. Cuando el usuario selecciona un tema y hace clic en "Cargar Audios", el frontend:
+   - Obtiene la lista de pares ES/EN desde `/listar_audios`
+   - Llama a `precargarAudios()` que descarga cada MP3 como `ArrayBuffer` mediante `fetch`
+   - Convierte cada buffer en un `Blob` con tipo `audio/mpeg`
+   - Crea una `blobUrl` usando `URL.createObjectURL(blob)` y la almacena en el objeto del par (`p.es.blobUrl`, `p.en.blobUrl`)
+
+2. Durante la reproducción, las funciones `reproducirFaseEs()`, `reproducirFaseEn()` y `reproducirArchivoSuelto()` usan la `blobUrl` si está disponible, con fallback a `/servir_audio` si la precarga falló o aún no terminó.
+
+3. Al cambiar de tema, `liberarBlobUrls()` recorre todos los pares y sueltos llamando a `URL.revokeObjectURL()` para liberar memoria.
+
+#### 10.2 Concurrencia
+
+- Las descargas se lanzan en lotes de **6 peticiones simultáneas** (`CONCURRENCIA = 6`)
+- Errores individuales se ignoran (el audio correspondiente usará el fallback a `/servir_audio`)
+- La UI muestra progreso: `⏳ Precargando X/Y audios...`
+
+#### 10.3 Variables involucradas
+
+| Variable | Descripción |
+|----------|-------------|
+| `pares[].es.blobUrl` | Blob URL del audio en español |
+| `pares[].en.blobUrl` | Blob URL del audio en inglés |
+| `sueltos[].blobUrl` | Blob URL de archivo suelto |
+| `CONCURRENCIA` | Límite de descargas simultáneas (6) |
+
 ---
 
-### 10. Output File Naming Convention
+### 11. Output File Naming Convention
 
 Files must be exported individually using a strict sanitized pattern:
 `{PREFIJO}_{Numero_Linea}_{Texto_Columna_1_Sanitizado}_es.mp3`
@@ -268,7 +299,7 @@ Files must be exported individually using a strict sanitized pattern:
 
 ---
 
-### 11. Dependencias del proyecto (`requirements.txt`)
+### 12. Dependencias del proyecto (`requirements.txt`)
 
 ```
 edge-tts
@@ -281,7 +312,7 @@ gunicorn
 
 ---
 
-### 12. Ejecución
+### 13. Ejecución
 
 ```bash
 # Modo servidor web (Flask - desarrollo)
@@ -299,7 +330,7 @@ En desarrollo, el servidor Flask se ejecuta en `http://0.0.0.0:5000` con modo de
 
 ---
 
-### 13. Despliegue con Docker
+### 14. Despliegue con Docker
 
 El proyecto incluye un `Dockerfile` preparado para **Back4App**:
 
@@ -319,7 +350,7 @@ docker run -p 8080:8080 inglesv5
 
 ---
 
-### 14. Validaciones de seguridad
+### 15. Validaciones de seguridad
 
 - Archivo CSV obligatorio y con extensión `.csv`.
 - Carpeta de salida obligatoria; se crea automáticamente si no existe.
@@ -330,7 +361,7 @@ docker run -p 8080:8080 inglesv5
 
 ---
 
-### 15. Compatibilidad con Pydroid
+### 16. Compatibilidad con Pydroid
 
 El proyecto es compatible con **Pydroid** (app Android) ya que:
 - Se eliminó la dependencia de `pydub` (requería FFmpeg, no disponible en Pydroid).
