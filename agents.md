@@ -7,95 +7,254 @@
 ```
 InglesV5/
 ├── app.py                   → Aplicación Flask (punto de entrada web)
+├── config.py                → Configuración centralizada (Secret Key, rutas, límites)
+├── database.py              → Módulo de base de datos SQLite (CRUD temas/pares/CSVs)
+├── background.py            → Sistema de tareas en segundo plano (ThreadPoolExecutor)
+├── audio_generator.py       → Núcleo de generación TTS (edge-tts, sanitización, pausas)
 ├── traducciones.py          → Script original de línea de comandos (conservado)
 ├── traducciones.csv         → CSV de ejemplo con frases español/inglés
 ├── database.db              → Base de datos SQLite (temas, pares de audio, CSVs)
+├── requirements.txt         → Dependencias del proyecto
+├── Dockerfile               → Configuración Docker para Back4App
+├── .dockerignore            → Exclusiones para Docker
 ├── templates/
 │   ├── index.html           → Página principal con menú de navegación
 │   ├── generar.html         → Formulario para subir CSV y generar audios por tema
 │   ├── reproducir.html      → Reproductor secuencial ES → pausa → EN
-│   └── temas.html           → Gestión de temas (CRUD)
+│   ├── temas.html           → Gestión de temas (CRUD)
+│   ├── exportar.html        → Exportación de temas con reproductor offline
+│   └── descargar_frases.html→ Descarga de frases en CSV
+├── routes/
+│   ├── __init__.py          → Paquete de rutas Flask
+│   ├── main.py              → Ruta principal (/) y archivos de audio estáticos
+│   ├── temas.py             → CRUD de temas (/api/temas, /temas)
+│   ├── generar.py           → Generación de audios (/generar, /procesar, /progreso)
+│   ├── reproductor.py       → Reproductor de audios (/reproducir, /listar_audios, /servir_audio)
+│   ├── exportar.py          → Exportación offline (/exportar, /api/exportar)
+│   └── descargas.py         → Descarga de frases CSV (/descargar-frases, /api/descargar-frases)
 ├── static/
 │   ├── style.css            → Estilos CSS con diseño responsive
 │   └── audio/               → Directorio con subcarpetas por tema
+├── csv/                     → Archivos CSV de ejemplo subidos
+├── offline/                 → Exportaciones offline de temas
 └── agents.md                → Documentación del proyecto
 ```
 
-### 1. Migración a Flask (Web GUI)
+---
 
-El proyecto ahora cuenta con una interfaz web basada en **Flask** que expone las mismas funcionalidades del script original a través de un navegador.
+### 1. Arquitectura de la aplicación Flask
 
-#### 1.1 Rutas de la aplicación
+El proyecto ha sido reestructurado de una aplicación Flask monolítica a una arquitectura modular con separación de responsabilidades.
+
+#### 1.1 Punto de entrada (`app.py`)
+
+`app.py` es el punto de entrada principal y se limita a:
+- Configurar la aplicación Flask desde `config.py`
+- Inicializar la base de datos (`database.py`)
+- Inicializar el sistema de background tasks (`background.py`)
+- Registrar los módulos de rutas desde `routes/`
+- Iniciar el servidor
+
+Ya no contiene lógica de rutas ni de generación de audio.
+
+#### 1.2 Configuración centralizada (`config.py`)
+
+Todas las constantes de configuración están en `config.py`:
+- `SECRET_KEY`, `MAX_CONTENT_LENGTH` (16 MB), `MAX_WORKERS` (3)
+- Métodos estáticos para rutas de audio y base de datos
+- Constante `PREFIJO = "audio"` para la convención de nombres
+
+#### 1.3 Enrutamiento modular
+
+Las rutas están organizadas en módulos separados dentro de `routes/`:
+
+| Módulo | Funcionalidad |
+|--------|---------------|
+| `routes/main.py` | Página de inicio, servir archivos de audio estáticos |
+| `routes/temas.py` | CRUD completo de temas con API REST |
+| `routes/generar.py` | Generación asíncrona de audios con polling de progreso |
+| `routes/reproductor.py` | Reproductor de pares ES/EN con pausa programática |
+| `routes/exportar.py` | Exportación de temas a directorio con reproductor HTML offline |
+| `routes/descargas.py` | Descarga de frases de múltiples temas en CSV |
+
+---
+
+### 2. Base de datos SQLite (`database.py`)
+
+La base de datos almacena temas, pares de audio y archivos CSV subidos.
+
+#### 2.1 Esquema de tablas
+
+- **`themes`**: Temas con nombre único, descripción y timestamps.
+- **`audio_pairs`**: Pares ES/EN con números de línea, archivos generados y pausa calculada.
+- **`csv_files`**: Registro de archivos CSV subidos por tema.
+
+#### 2.2 Operaciones principales
+
+| Función | Descripción |
+|---------|-------------|
+| `crear_tema(app, nombre, descripcion)` | Crea o actualiza un tema |
+| `guardar_pares_en_bd(app, tema_id, resultados)` | Guarda resultados de generación |
+| `listar_temas_db(app)` | Lista temas con conteo de pares |
+| `listar_temas_con_pares(app)` | Lista solo temas que tienen pares |
+| `obtener_tema_db(app, tema_id)` | Tema + sus pares de audio |
+| `actualizar_tema_db(app, tema_id, nombre, descripcion)` | Actualiza nombre/descripción |
+| `eliminar_tema_db(app, tema_id)` | Elimina tema de la BD |
+| `obtener_pares_por_temas(app, tema_ids)` | Pares de múltiples temas para exportación |
+| `guardar_csv_file(app, tema_id, filename)` | Registra CSV subido |
+
+---
+
+### 3. Sistema de Background Tasks (`background.py`)
+
+Permite lanzar la generación de audios en segundo plano y hacer polling del progreso desde el frontend.
+
+#### 3.1 Flujo de trabajo asíncrono
+
+1. El frontend envía el CSV y nombre del tema a `/procesar`
+2. Se crea una tarea con un `task_id` UUID único
+3. El procesamiento se lanza en un `ThreadPoolExecutor`
+4. El endpoint responde inmediatamente con el `task_id`
+5. El frontend hace polling a `/progreso/<task_id>` para seguir el avance
+6. Al completarse, se devuelven resultados y errores, y la tarea se limpia
+
+#### 3.2 Estados de tarea
+
+- `iniciando` → `procesando` → `completado` | `error`
+
+#### 3.3 Thread safety
+
+- Las tareas se almacenan en un diccionario global protegido con `threading.Lock`
+- Cada línea del CSV se procesa en un hilo separado (pool de hasta `MAX_WORKERS` hilos)
+
+---
+
+### 4. Núcleo de generación de audio (`audio_generator.py`)
+
+Lógica compartida entre generación online y offline, extraída como módulo independiente.
+
+#### 4.1 `limpiar_texto(texto)`
+Sanitiza el texto español para usarlo como nombre de archivo (ver sección 5).
+
+#### 4.2 `calcular_pausa_estimada(texto_en)`
+Heurística basada en número de palabras (~150ms por palabra + 300ms base, mínimo 800ms).
+
+#### 4.3 `calcular_pausa_por_duracion(duracion_segundos)`
+Aproximación del 70% de la duración del audio en inglés.
+
+#### 4.4 `generar_audio_linea(es_text, en_text, line_num, output_dir)`
+Función diseñada para ejecutarse en un hilo:
+- Crea su propio event loop asyncio (cada hilo necesita el suyo)
+- Genera audio TTS con `edge-tts` (español: `es-ES-AlvaroNeural`, inglés: `en-US-GuyNeural`)
+- Guarda archivos ES y EN separados
+- Calcula pausa estimada
+- Limpia archivos parciales si falla
+
+---
+
+### 5. Rutas de la aplicación
+
+#### 5.1 Rutas principales (`routes/main.py`)
 
 | Ruta | Método | Descripción |
 |------|--------|-------------|
 | `/` | GET | Página principal con menú y explicación de uso |
-| `/generar` | GET | Formulario para subir CSV y especificar carpeta de salida |
-| `/procesar` | POST | Endpoint que recibe el CSV + carpeta de salida y genera los audios por separado |
-| `/descargar/<filename>` | GET | Descarga un archivo de audio individual desde la carpeta de salida |
-| `/reproducir` | GET | Reproductor de audios con lista de reproducción secuencial |
-| `/listar_audios` | POST | Escanea un directorio, agrupa los MP3 en pares ES/EN y devuelve la info |
-| `/servir_audio` | GET | Sirve un archivo MP3 individual para reproducción en el navegador |
+| `/static/audio/<path:filename>` | GET | Sirve archivos de audio estáticos |
 
-#### 1.2 Flujo de trabajo (generación)
+#### 5.2 Gestión de temas (`routes/temas.py`)
 
-1. El usuario accede a `http://localhost:5000/` en el navegador.
-2. Hace clic en **"Generar Audios"** → formulario en `/generar`.
-3. Adjunta un archivo CSV y escribe la ruta de la carpeta de salida.
-4. El formulario envía los datos vía `POST` a `/procesar` usando `FormData`.
-5. El endpoint `/procesar` valida el archivo y la carpeta, y ejecuta la generación.
-6. Para cada línea del CSV, genera **dos archivos MP3 separados**:
+| Ruta | Método | Descripción |
+|------|--------|-------------|
+| `/temas` | GET | Página de gestión de temas |
+| `/api/temas` | GET | Lista todos los temas con metadatos |
+| `/api/temas/<int:tema_id>` | GET | Obtiene un tema con sus pares de audio |
+| `/api/temas` | POST | Crea un nuevo tema |
+| `/api/temas/<int:tema_id>` | PUT | Actualiza nombre/descripción de un tema |
+| `/api/temas/<int:tema_id>` | DELETE | Elimina un tema y sus archivos de audio |
+
+#### 5.3 Generación de audios (`routes/generar.py`)
+
+| Ruta | Método | Descripción |
+|------|--------|-------------|
+| `/generar` | GET | Formulario para generar audios |
+| `/procesar` | POST | Recibe CSV + tema y lanza generación asíncrona |
+| `/progreso/<task_id>` | GET | Polling de progreso de tarea asíncrona |
+| `/descargar/<path:filename>` | GET | Descarga un archivo de audio individual |
+
+#### 5.4 Reproductor de audios (`routes/reproductor.py`)
+
+| Ruta | Método | Descripción |
+|------|--------|-------------|
+| `/reproducir` | GET | Página del reproductor de audios |
+| `/listar_audios` | POST | Escanea un tema, lista pares ES/EN con duración |
+| `/servir_audio` | GET | Sirve un MP3 individual (con anti path traversal) |
+
+#### 5.5 Exportación offline (`routes/exportar.py`)
+
+| Ruta | Método | Descripción |
+|------|--------|-------------|
+| `/exportar` | GET | Página para exportar un tema |
+| `/api/exportar` | POST | Exporta tema: copia audios + genera HTML offline |
+
+#### 5.6 Descarga de frases (`routes/descargas.py`)
+
+| Ruta | Método | Descripción |
+|------|--------|-------------|
+| `/descargar-frases` | GET | Página para seleccionar temas y descargar CSV |
+| `/api/descargar-frases` | POST | Recibe IDs de temas, devuelve CSV con frases |
+
+---
+
+### 6. Flujo de trabajo (generación asíncrona)
+
+1. El usuario accede a `http://localhost:5000/generar`.
+2. Selecciona un tema existente o escribe uno nuevo, adjunta un CSV.
+3. El formulario envía los datos vía `POST` a `/procesar` usando `FormData`.
+4. El endpoint `/procesar` valida, crea/recupera el tema, y lanza el procesamiento en segundo plano.
+5. Devuelve un `task_id` inmediatamente.
+6. El frontend hace polling a `/progreso/<task_id>` cada 1-2 segundos.
+7. Para cada línea del CSV, se genera un par de archivos MP3:
    - `{PREFIJO}_{LINEA}_{TEXTO_SANITIZADO}_es.mp3` (voz española)
    - `{PREFIJO}_{LINEA}_{TEXTO_SANITIZADO}_en.mp3` (voz inglesa)
-7. Devuelve un JSON con `success`, `total`, `resultados` (con ambos archivos) y `errores`.
-
-#### 1.3 Validaciones implementadas
-
-- Archivo CSV obligatorio y con extensión `.csv`.
-- Carpeta de salida obligatoria; se crea automáticamente si no existe.
-- Límite de subida: 16 MB (`MAX_CONTENT_LENGTH`).
-- Manejo de errores por línea (fallo de TTS, archivo corrupto, etc.) sin detener el proceso completo.
+8. Al completarse, los resultados se guardan en la base de datos y la tarea se limpia.
 
 ---
 
-### 2. Núcleo de generación (compartido entre CLI y Flask)
+### 7. Exportación offline (`routes/exportar.py`)
 
-Tanto `traducciones.py` como `app.py` comparten la misma lógica central, que se ha encapsulado en funciones reutilizables dentro de `app.py`:
-
-#### 2.1 `limpiar_texto(texto)`
-Sanitiza el texto español para usarlo como nombre de archivo, siguiendo las reglas de la convención de nombres (ver sección 4).
-
-#### 2.2 `calcular_pausa_estimada(texto_en)` y `calcular_pausa_por_duracion(duracion_segundos)`
-Reemplazan a **The Silence Gap Formula** que requería `pydub`. Ahora se usan dos métodos para calcular la pausa:
-- **`calcular_pausa_estimada`**: Heurística basada en número de palabras (~150ms por palabra + 300ms base, mínimo 800ms). Se usa durante la generación del CSV.
-- **`calcular_pausa_por_duracion`**: Aproximación del 70% de la duración del audio en inglés. Se usa en el reproductor cuando se escanea el directorio.
-
-#### 2.3 `generar_audios_desde_csv(csv_path, output_dir, progreso_callback=None)`
-Función asíncrona que:
-- Lee el CSV fila por fila.
-- Genera audio TTS para español (`es-ES-AlvaroNeural`) e inglés (`en-US-GuyNeural`) usando `edge-tts`.
-- Guarda cada audio como archivo separado (ES y EN independientes).
-- Exporta cada resultado como archivo MP3 individual.
-- Acepta un callback opcional para notificar progreso en tiempo real.
-- Reporta errores por línea sin interrumpir el procesamiento.
+Permite exportar un tema completo a un directorio con:
+- Todos los archivos MP3 copiados
+- Un archivo HTML autónomo que funciona completamente offline
+- El HTML generado incluye el mismo reproductor con pausa programática, barra de progreso, controles de transporte y lista de reproducción
+- Todo el JavaScript está embebido en el propio HTML
 
 ---
 
-### 3. Pausa programática en el navegador
+### 8. Descarga de frases en CSV (`routes/descargas.py`)
 
-Anteriormente, los audios se concatenaban con `pydub` (requería FFmpeg, incompatible con Pydroid). Ahora:
-
-- **Los audios se generan por separado**: un archivo `_es.mp3` y otro `_en.mp3` por cada línea del CSV.
-- **La pausa se genera programáticamente en el navegador**: al reproducir, el reproductor calcula una pausa basada en la duración del audio en inglés (~70% de su duración) o en la longitud del texto (~150ms por palabra).
-- **Flujo de reproducción secuencial**:
-  1. 🇪🇸 **Español** → se reproduce el audio en español.
-  2. ⏸️ **Pausa** → se muestra un contador regresivo con la pausa calculada.
-  3. 🇬🇧 **Inglés** → se reproduce el audio en inglés.
-  4. ✅ **Completado** → se avanza automáticamente al siguiente par.
+Permite seleccionar múltiples temas y descargar todas sus frases en un único archivo CSV:
+- Columnas: Tema, Línea, Español, Inglés
+- Incluye BOM UTF-8 para compatibilidad con Excel
+- Nombre de archivo con timestamp
 
 ---
 
-### 4. Output File Naming Convention
+### 9. Pausa programática en el navegador
+
+Los audios se generan por separado (ES y EN independientes). La pausa entre español e inglés se calcula programáticamente:
+
+- Durante la generación: `calcular_pausa_estimada` (~150ms por palabra, mínimo 800ms)
+- En el reproductor: se usa la pausa almacenada en la BD para cada par
+
+Flujo de reproducción secuencial:
+1. 🇪🇸 **Español** → se reproduce el audio en español.
+2. ⏸️ **Pausa** → se muestra un contador regresivo con la pausa calculada.
+3. 🇬🇧 **Inglés** → se reproduce el audio en inglés.
+4. ✅ **Completado** → se avanza automáticamente al siguiente par.
+
+---
+
+### 10. Output File Naming Convention
 
 Files must be exported individually using a strict sanitized pattern:
 `{PREFIJO}_{Numero_Linea}_{Texto_Columna_1_Sanitizado}_es.mp3`
@@ -109,90 +268,71 @@ Files must be exported individually using a strict sanitized pattern:
 
 ---
 
-### 5. Dependencias del proyecto
+### 11. Dependencias del proyecto (`requirements.txt`)
 
 ```
-pip install edge-tts flask mutagen
+edge-tts
+flask
+mutagen
+gunicorn
 ```
 
-**Nota:** Se ha eliminado `pydub` (que requería FFmpeg externo) para compatibilidad con Pydroid. Ahora los audios se generan por separado y la pausa se calcula programáticamente en el navegador.
+**Nota:** Se ha eliminado `pydub` (que requería FFmpeg externo) para compatibilidad con Pydroid. Los audios se generan por separado y la pausa se calcula programáticamente en el navegador.
 
 ---
 
-### 6. Ejecución
+### 12. Ejecución
 
 ```bash
-# Modo servidor web (Flask)
+# Modo servidor web (Flask - desarrollo)
 python app.py
 # Abrir en navegador: http://localhost:5000
+
+# Modo servidor web (Gunicorn - producción/Docker)
+gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 2 --threads 4 --timeout 120 app:app
 
 # Modo línea de comandos (original)
 python traducciones.py
 ```
 
-El servidor Flask se ejecuta en `http://0.0.0.0:5000` con modo debug activado.
+En desarrollo, el servidor Flask se ejecuta en `http://0.0.0.0:5000` con modo debug y `threaded=True`.
 
 ---
 
-### 7. Reference Code Implementation
+### 13. Despliegue con Docker
 
-El código de referencia original se encuentra en `traducciones.py`. La implementación Flask en `app.py` extiende esa misma lógica añadiendo una interfaz web y manteniendo compatibilidad total con el formato CSV y la convención de nombres existente.
+El proyecto incluye un `Dockerfile` preparado para **Back4App**:
+
+- Base: `python:3.11-slim`
+- Puerto configurable via `$PORT` (Back4App asigna automáticamente)
+- Gunicorn con 2 workers y 4 threads
+- Variables de entorno: `PYTHONUNBUFFERED=1`, `FLASK_ENV=production`
+- Directorios creados: `static/audio`, `csv`, `offline`
+
+```bash
+# Construir imagen
+docker build -t inglesv5 .
+
+# Ejecutar contenedor
+docker run -p 8080:8080 inglesv5
+```
 
 ---
 
-### 8. Reproductor de Audios
+### 14. Validaciones de seguridad
 
-A partir de la versión con Flask, se ha añadido un reproductor de audio integrado en el navegador, accesible desde el menú principal como **"Reproducir Audios"**.
-
-#### 8.1 Flujo de reproducción
-
-1. El usuario introduce la ruta de un directorio que contiene archivos MP3.
-2. La aplicación escanea el directorio, **agrupa los archivos en pares** ES/EN usando el patrón de nombres (`_es.mp3` / `_en.mp3`), y ordena alfabéticamente.
-3. Se muestra una lista de reproducción con todos los pares encontrados y su duración.
-4. El usuario puede:
-   - **Reproducir todo** desde el principio.
-   - **Hacer clic** en cualquier par de la lista para empezar desde ahí.
-   - Usar los controles de transporte: **Anterior (⏮️)**, **Reproducir/Pausar (▶️/⏸️)**, **Parar (⏹️)**, **Siguiente (⏭️)**.
-5. Al finalizar cada fase (ES → pausa → EN), el reproductor avanza automáticamente al siguiente par.
-6. Una barra de progreso muestra el avance de la reproducción, y el par activo se resalta en la lista.
-
-#### 8.2 Indicador de fase
-
-El reproductor muestra un indicador visual de la fase actual:
-- **🇪🇸 Escuchando español...** → reproduciendo audio en español.
-- **⏸️ Pausa de Xms...** → contador regresivo de la pausa programática.
-- **🇬🇧 Repitiendo en inglés...** → reproduciendo audio en inglés.
-- **✅ ¡Completado!** → par finalizado.
-
-#### 8.3 Nuevas rutas
-
-| Ruta | Método | Descripción |
-|------|--------|-------------|
-| `/reproducir` | GET | Página del reproductor de audios |
-| `/listar_audios` | POST | Escanea un directorio, agrupa en pares `_es.mp3`/`_en.mp3`, devuelve nombre + duración + pausa calculada |
-| `/servir_audio` | GET | Sirve un archivo MP3 individual para el reproductor del navegador (con validación anti path traversal) |
-
-#### 8.4 Controles del reproductor
-
-El frontend (`templates/reproducir.html`) gestiona todo el estado del reproductor en JavaScript:
-- `pares[]`: array con los pares ES/EN obtenidos del servidor.
-- `sueltos[]`: archivos MP3 que no siguen el patrón de pares.
-- `currentIndex`: índice del elemento actual en la reproducción.
-- `phase`: estado actual (`stopped`, `es`, `pause`, `en`, `done`).
-- `audioElement`: objeto `Audio` de HTML5 para la reproducción.
-- La pausa entre ES y EN se gestiona con `setInterval` que actualiza un contador regresivo.
-
-#### 8.5 Validaciones de seguridad
-
-- El endpoint `/listar_audios` verifica que el directorio exista antes de escanear.
-- El endpoint `/servir_audio` normaliza la ruta y comprueba que el archivo solicitado esté dentro del directorio permitido (protección contra path traversal).
+- Archivo CSV obligatorio y con extensión `.csv`.
+- Carpeta de salida obligatoria; se crea automáticamente si no existe.
+- Límite de subida: 16 MB (`MAX_CONTENT_LENGTH`).
+- Manejo de errores por línea (fallo de TTS, archivo corrupto, etc.) sin detener el proceso completo.
+- El endpoint `/servir_audio` normaliza la ruta y verifica que el archivo esté dentro del directorio permitido (protección contra path traversal).
 - Solo se sirven archivos con extensión `.mp3`.
 
 ---
 
-### 9. Compatibilidad con Pydroid
+### 15. Compatibilidad con Pydroid
 
-A partir de esta versión, el proyecto es compatible con **Pydroid** (app Android) ya que:
+El proyecto es compatible con **Pydroid** (app Android) ya que:
 - Se eliminó la dependencia de `pydub` (requería FFmpeg, no disponible en Pydroid).
 - La pausa entre español e inglés se calcula programáticamente en el navegador.
 - Solo se requiere `edge-tts`, `flask` y `mutagen` como dependencias Python.
