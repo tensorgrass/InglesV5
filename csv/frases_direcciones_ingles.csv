@@ -1,0 +1,158 @@
+Genera un archivo de csv con dos columnas separadas por ";"
+Tiene que terner 50 registros
+La primera columna es una frase en español y la segunda su traducción en ingles.
+El tema de las frases es dar direcciones
+Tienen que tener un nivel superior a las siguientes frases:
+
+
+español, ingles
+Sigue recto por esta calle.;Go straight along this street.
+Gira a la derecha en la esquina.;Turn right at the corner.
+Gira a la izquierda después del banco.;Turn left after the bank.
+Cruza la calle con cuidado.;Cross the street carefully.
+Camina dos cuadras hacia adelante.;Walk two blocks forward.
+Pasa el supermercado y detente.;Pass the supermarket and stop.
+Está justo detrás de la iglesia.;It is right behind the church.
+La entrada está frente al parque.;The entrance is in front of the park.
+Sube las escaleras hasta el segundo piso.;Go up the stairs to the second floor.
+Baja por la rampa de la derecha.;Go down the ramp on the right.
+El hotel está al final de la avenida.;The hotel is at the end of the avenue.
+Toma la primera salida de la rotonda.;Take the first exit at the roundabout.
+Sigue las señales hacia el centro.;Follow the signs to the center.
+Está a mano derecha.;It is on the right-hand side.
+Está a mano izquierda.;It is on the left-hand side.
+Camina hacia el semáforo.;Walk toward the traffic light.
+Cruza el puente peatonal.;Cross the pedestrian bridge.
+Gira hacia atrás en la siguiente calle.;Turn back at the next street.
+Está entre la librería y el café.;It is between the bookstore and the cafe.
+Camina junto al río.;Walk beside the river.
+Entra por la puerta principal.;Enter through the main door.
+Sal por la puerta trasera.;Exit through the back door.
+Está a unos pasos de aquí.;It is a few steps from here.
+Camina en dirección al norte.;Walk in the direction of north.
+Sigue el camino de tierra.;Follow the dirt path.
+Gira a la derecha en el cruce.;Turn right at the intersection.
+Pasa por debajo del puente.;Go under the bridge.
+Sube por la colina.;Go up the hill.
+Baja hasta el metro.;Go down to the subway.
+Está al lado del hospital.;It is next to the hospital.
+Busca el edificio alto de cristal.;Look for the tall glass building.
+Sigue todo derecho hasta el fondo.;Go all the way straight to the end.
+Gira a la izquierda en el semáforo.;Turn left at the traffic light.
+Está frente a la estación de tren.;It is opposite the train station.
+Camina rodeando la plaza.;Walk around the square.
+Cruza el parque en diagonal.;Cross the park diagonally.
+Está a la vuelta de la esquina.;It is just around the corner.
+Sigue este pasillo hasta el final.;Follow this hallway to the end.
+Toma el ascensor hasta el sótano.;Take the elevator to the basement.
+Está justo enfrente de ti.;It is right in front of you.
+No cruces la avenida principal.;Do not cross the main avenue.
+Camina una cuadra más.;Walk one more block.
+Gira a la derecha después de la escuela.;Turn right after the school.
+Está cerca de la parada de autobús.;It is near the bus stop.
+El destino está de ese lado.;The destination is on that side.
+Ven por este camino.;Come this way.
+Ve por aquella calle.;Go down that street.
+Sigue las flechas en el suelo.;Follow the arrows on the floor.
+El local está junto a la farmacia.;The shop is next to the pharmacy.
+Termina tu recorrido aquí.;End your route here.
+Gira a la izquierda en la esquina de la cuadra.;Turn left at the corner of the block.
+Sigue derecho hasta ver el monumento.;Go straight until you see the monument.
+Cruza la calle en el paso de peatones.;Cross the street at the crosswalk.
+Sube por el ascensor al tercer piso.;Take the elevator up to the third floor.
+Baja en la siguiente estación.;Get off at the next station.
+El cine está detrás del centro comercial.;The cinema is behind the shopping mall.
+Camina en dirección opuesta.;Walk in the opposite direction.
+Toma el desvío a la derecha.;Take the detour to the right.
+Está justo pasando la gasolinera.;It is just past the gas station.
+Sigue recto por dos kilómetros.;Go straight for two kilometers.
+Gira a la derecha antes del puente.;Turn right before the bridge.
+El museo queda a mano izquierda.;The museum is on the left-hand side.
+La tienda está a mano derecha.;The shop is on the right-hand side.
+Camina hacia la torre alta.;Walk toward the tall tower.
+Cruza la plaza central.;Cross the central square.
+El restaurante está al lado del banco.;The restaurant is next to the bank.
+Busca la puerta de color verde.;Look for the green door.
+Está entre la oficina de correos y la escuela.;It is between the post office and the school.
+Sigue las señales que dicen 'Salida'.;Follow the signs that say 'Exit'.
+Baja las escaleras mecánicas.;Go down the escalators.
+Sube por la rampa principal.;Go up the main ramp.
+Gira a la izquierda en la rotonda.;Turn left at the roundabout.
+Está a la vuelta de ese edificio.;It is around the corner of that building.
+No te pases de la esquina.;Do not go past the corner.
+Camina media cuadra más.;Walk half a block more.
+Está justo enfrente de la estación.;It is right opposite the station.
+Sigue este camino hasta el final.;Follow this path to the end.
+Gira a la derecha después del parque.;Turn right after the park.
+Cruza la avenida con cuidado.;Cross the avenue carefully.
+El destino está justo aquí.;The destination is right here.
+Camina junto a la pared gris.;Walk along the grey wall.
+Entra por el pasillo de la izquierda.;Enter through the left hallway.
+La cafetería está arriba de la librería.;The cafe is above the bookstore.
+El estacionamiento está abajo del edificio.;The parking lot is below the building.
+Sigue todo derecho hacia el sur.;Go straight towards the south.
+Gira a la izquierda en el segundo semáforo.;Turn left at the second traffic light.
+Pasa la biblioteca y luego gira.;Pass the library and then turn.
+Está a unos metros de la playa.;It is a few meters from the beach.
+Ve por el camino del medio.;Go down the middle path.
+Toma la segunda calle a la derecha.;Take the second street on the right.
+Toma la tercera calle a la izquierda.;Take the third street on the left.
+Está situado frente al mercado.;It is located in front of the market.
+Camina bordeando el lago.;Walk around the lake.
+Sigue las flechas amarillas.;Follow the yellow arrows.
+La oficina está al final del pasillo.;The office is at the end of the hall.
+Gira hacia atrás en este cruce.;Turn back at this junction.
+Cruza por el puente de madera.;Cross the wooden bridge.
+Está muy cerca de la catedral.;It is very close to the cathedral.
+Camina en línea recta hacia allí.;Walk in a straight line over there.
+Termina el recorrido frente al teatro.;End the tour in front of the theater.
+Gira a la izquierda antes de la farmacia.;Turn left before the pharmacy.
+Sigue por esta acera hasta el final.;Follow this sidewalk to the end.
+Cruza la calle después del semáforo.;Cross the street after the traffic light.
+Sube al autobús en esta parada.;Get on the bus at this stop.
+Baja del taxi en la esquina.;Get out of the taxi at the corner.
+El banco está detrás de la estación de servicio.;The bank is behind the service station.
+Camina hacia la salida de emergencia.;Walk toward the emergency exit.
+Toma el camino de la izquierda.;Take the path on the left.
+Está justo antes de llegar al río.;It is just before reaching the river.
+Sigue derecho por tres cuadras más.;Go straight for three more blocks.
+Gira a la derecha en el callejón.;Turn right at the alley.
+La cafetería queda a mano derecha del vestíbulo.;The cafe is on the right-hand side of the lobby.
+El baño está a mano izquierda del pasillo.;The bathroom is on the left-hand side of the hall.
+Camina en dirección a las vías del tren.;Walk in the direction of the train tracks.
+Cruza el patio interior.;Cross the interior courtyard.
+El kiosko está junto a la entrada principal.;The kiosk is next to the main entrance.
+Busca el letrero luminoso azul.;Look for the bright blue sign.
+Está entre el restaurante y la tienda de ropa.;It is between the restaurant and the clothing store.
+Sigue las indicaciones hacia el estacionamiento.;Follow the signs to the parking lot.
+Baja por las escaleras de caracol.;Go down the spiral stairs.
+Sube al segundo piso por el ascensor.;Go up to the second floor by the elevator.
+Gira a la izquierda al salir del edificio.;Turn left when leaving the building.
+Está a la vuelta de la plaza principal.;It is around the corner from the main square.
+No pases por esa calle estrecha.;Do not go through that narrow street.
+Camina unos metros hacia el norte.;Walk a few meters toward the north.
+Está justo detrás del ayuntamiento.;It is right behind the city hall.
+Sigue la línea verde pintada en el suelo.;Follow the green line painted on the floor.
+Gira a la derecha al ver la estatua.;Turn right when you see the statue.
+Cruza el puente de piedra.;Cross the stone bridge.
+El destino está al cruzar la calle.;The destination is across the street.
+Camina junto a la vía del tren.;Walk along the train track.
+Entra por el acceso lateral.;Enter through the side access.
+La terraza está arriba del restaurante.;The terrace is above the restaurant.
+El almacén está abajo del taller.;The warehouse is below the workshop.
+Sigue todo derecho hacia el este.;Go straight towards the east.
+Gira a la izquierda después de la curva.;Turn left after the curve.
+Pasa el hospital y sigue caminando.;Pass the hospital and keep walking.
+Está a diez minutos de aquí a pie.;It is ten minutes from here on foot.
+Ve por el sendero peatonal.;Go along the pedestrian path.
+Toma la primera calle a la izquierda.;Take the first street on the left.
+Toma la tercera calle a la derecha.;Take the third street on the right.
+Está situado frente a la comisaría.;It is located in front of the police station.
+Camina rodeando el parque infantil.;Walk around the playground.
+Sigue las señales de color rojo.;Follow the red signs.
+La salida está al final de la escalera.;The exit is at the end of the stairs.
+Gira hacia atrás si ves el puente.;Turn back if you see the bridge.
+Cruza por el paso elevado.;Cross using the overpass.
+Está muy cerca del centro histórico.;It is very close to the historic center.
+Camina en línea recta hacia la playa.;Walk in a straight line toward the beach.
+Termina la ruta en la oficina de turismo.;End the route at the tourist office.
